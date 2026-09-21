@@ -13,10 +13,16 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Npgsql.OpenTelemetry" Version="10.0.3" />
         <PackageReference Include="OpenTelemetry" Version="1.15.3" />
         <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
         <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
         <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.15.1-beta.1" />
         <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
         <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
     </ItemGroup>
@@ -29,6 +35,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Ledger.Application\Ledger.Application.csproj" />
+      <ProjectReference Include="..\Ledger.Infrastructure\Ledger.Infrastructure.csproj" />
     </ItemGroup>
 
 </Project>

@@ -4,6 +4,7 @@ using Ledger.Application.Abstractions;
 using Ledger.Application.Behavior;
 using Ledger.Application.Extensions;
 using Ledger.Domain.Abstractions;
+using Ledger.Infrastructure.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,8 @@ builder.AddLogging();
 builder.Services.AddObservability();
 
 builder.Services.AddApplication(Assembly.Load("Ledger.Application"));
+
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment, Assembly.Load("Ledger.Infrastructure"));
 
 // Options are read by the source generator at compile time, so they must stay inline constants
 builder.Services.AddMediator(options =>
@@ -30,6 +33,11 @@ app.RegisterMinimalEndpoints();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+}
+
+if (app.Environment.IsProduction())
+{
+    app.Services.ApplyPendingMigrations();
 }
 
 app.UseHttpsRedirection();
