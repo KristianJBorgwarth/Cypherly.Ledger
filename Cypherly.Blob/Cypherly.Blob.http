@@ -1,6 +1,0 @@
-@Cypherly.Blob_HostAddress = http://localhost:5036
-
-GET {{Cypherly.Blob_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
