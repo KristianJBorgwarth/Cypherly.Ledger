@@ -11,4 +11,8 @@ public sealed record Error(string Code, ErrorType Type, string? Description = nu
     public static Error Failure(string? description = null) => new("internal.server.error", ErrorType.Failure, description);
     
     public static Error BadRequest(string code, string description) => new(code, ErrorType.BadRequest, description);
+
+    public static Error Conflict(string? description = null) => new("conflict", ErrorType.Conflict, description);
+
+    public static Error Forbidden(string? description = null) => new("forbidden", ErrorType.Forbidden, description);
 }
