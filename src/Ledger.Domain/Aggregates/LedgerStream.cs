@@ -7,6 +7,10 @@ namespace Ledger.Domain.Aggregates;
 
 public sealed class LedgerStream : AggregateRoot
 {
+    private const int KeyLength = 32;
+    private const int HashLength = 32;
+    private const int SignatureLength = 64;
+
     private readonly List<LedgerWriteKey> _writeKeys = [];
     private readonly List<LedgerEvent> _events = [];
 
@@ -36,18 +40,26 @@ public sealed class LedgerStream : AggregateRoot
             IReadOnlyCollection<byte[]> keysAdded,
             IReadOnlyCollection<byte[]> keysRemoved)
     {
-        if (Archived) 
+        if (payload.Length == 0
+            || previousHash.Length != HashLength
+            || eventHash.Length != HashLength
+            || writeKeyPublic.Length != KeyLength
+            || signature.Length != SignatureLength
+            || keysAdded.Concat(keysRemoved).Any(k => k.Length != KeyLength))
+            throw new ArgumentException("Malformed append.");
+
+        if (Archived)
             return Result.Fail<LedgerEvent>(Error.NotFound<LedgerStream>(Id.ToString()));
 
-        if (!HasWriteKey(writeKeyPublic)) 
-            return Result.Fail<LedgerEvent>(Error.Forbidden());
+        if (!HasWriteKey(writeKeyPublic))
+            return Result.Fail<LedgerEvent>(Error.Forbidden("Write key is not authorized for this ledger."));
 
         if (expectedVersion != HeadVersion || !previousHash.AsSpan().SequenceEqual(HeadHash))
-            return Result.Fail<LedgerEvent>(Error.Conflict());
+            return Result.Fail<LedgerEvent>(Error.Conflict($"Ledger is at version {HeadVersion}, append expected {expectedVersion}."));
 
         var remaining = _writeKeys.Count(k => !keysRemoved.Any(r => r.AsSpan().SequenceEqual(k.PublicKey))) + keysAdded.Count(k => !HasWriteKey(k));
 
-        if (remaining == 0) 
+        if (remaining == 0)
             return Result.Fail<LedgerEvent>(Error.Validation("Append would leave the ledger without write keys."));
 
         var evt = new LedgerEvent(Id, HeadVersion + 1, payload, previousHash, writeKeyPublic, signature);
@@ -69,10 +81,10 @@ public sealed class LedgerStream : AggregateRoot
     public Result Archive(byte[] writeKeyPublic)
     {
         if (Archived)
-            return Result.Fail(Error.Failure("Ledger is already archived."));
+            return Result.Fail(Error.NotFound<LedgerStream>(Id.ToString()));
 
         if (!HasWriteKey(writeKeyPublic))
-            return Result.Fail(Error.Failure("Invalid write key."));
+            return Result.Fail(Error.Forbidden("Write key is not authorized for this ledger."));
 
         Archived = true;
         return Result.Ok();
