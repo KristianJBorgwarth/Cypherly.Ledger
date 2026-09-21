@@ -1,4 +1,9 @@
+using Ledger.API.Extensions;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddLogging();
+builder.Services.AddObservability();
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -34,6 +39,9 @@ app.MapGet("/weatherforecast", () =>
     .WithName("GetWeatherForecast");
 
 app.Run();
+
+// Required for integration tests
+public partial class Program;
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
