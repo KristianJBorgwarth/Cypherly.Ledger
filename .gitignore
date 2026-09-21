@@ -1,3 +1,6 @@
 .idea/*
 bin/
 obj/
+
+# Rider per-user settings
+*.DotSettings.user
