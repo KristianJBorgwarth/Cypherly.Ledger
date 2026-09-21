@@ -41,7 +41,6 @@ public static class ObservabilityExtensions
             options.AddOtlpExporter();
         });
 
-        // Always log to stdout so logs show up in `kubectl logs` / k9s, not only in the OTLP backend
         builder.Logging.AddSimpleConsole(o =>
         {
             o.SingleLine = true;
