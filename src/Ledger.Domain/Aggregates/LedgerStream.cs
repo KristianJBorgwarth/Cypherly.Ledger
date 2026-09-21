@@ -1,11 +1,11 @@
+
 using Ledger.Domain.Abstractions;
 using Ledger.Domain.Common;
 using Ledger.Domain.Entities;
 
 namespace Ledger.Domain.Aggregates;
 
-
-public sealed class Ledger : AggregateRoot
+public sealed class LedgerStream : AggregateRoot
 {
     private readonly List<LedgerWriteKey> _writeKeys = [];
     private readonly List<LedgerEvent> _events = [];
@@ -17,9 +17,9 @@ public sealed class Ledger : AggregateRoot
     public IReadOnlyCollection<LedgerEvent> Events => _events.AsReadOnly();
 
     // Private constructor for EF Core
-    private Ledger(Guid id) : base(id) { }
+    private LedgerStream(Guid id) : base(id) { }
 
-    public Ledger(Guid id, byte[] createWriteKey) : base(id)
+    public LedgerStream(Guid id, byte[] createWriteKey) : base(id)
     {
         _writeKeys.Add(new LedgerWriteKey(id, createWriteKey));
     }
@@ -37,7 +37,7 @@ public sealed class Ledger : AggregateRoot
             IReadOnlyCollection<byte[]> keysRemoved)
     {
         if (Archived) 
-            return Result.Fail<LedgerEvent>(Error.NotFound<Ledger>(Id.ToString()));
+            return Result.Fail<LedgerEvent>(Error.NotFound<LedgerStream>(Id.ToString()));
 
         if (!HasWriteKey(writeKeyPublic)) 
             return Result.Fail<LedgerEvent>(Error.Forbidden());
