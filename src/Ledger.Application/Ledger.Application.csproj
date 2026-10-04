@@ -11,6 +11,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <InternalsVisibleTo Include="Ledger.Test.Unit" />
+    </ItemGroup>
+
+    <ItemGroup>
       <PackageReference Include="FluentValidation" Version="12.1.1" />
       <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
       <PackageReference Include="Mediator.Abstractions" Version="3.0.2" />
