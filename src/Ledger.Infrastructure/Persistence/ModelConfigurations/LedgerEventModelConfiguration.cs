@@ -44,6 +44,14 @@ public sealed class LedgerEventModelConfiguration : BaseModelConfiguration<Ledge
             .HasMaxLength(64)
             .IsRequired();
 
+        builder.Property(x => x.KeysAdded)
+            .HasColumnName("keys_added")
+            .IsRequired();
+
+        builder.Property(x => x.KeysRemoved)
+            .HasColumnName("keys_removed")
+            .IsRequired();
+
         builder.HasIndex(x => new { x.StreamId, x.Version })
             .IsUnique();
 
