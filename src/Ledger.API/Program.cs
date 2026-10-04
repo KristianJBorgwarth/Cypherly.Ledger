@@ -14,6 +14,8 @@ builder.Services.AddObservability();
 
 builder.Services.AddCorsPolicy();
 
+builder.Services.AddAuthentication(configuration);
+
 builder.Services.AddApplication(Assembly.Load("Ledger.Application"));
 
 builder.Services.AddInfrastructure(configuration, builder.Environment, Assembly.Load("Ledger.Infrastructure"));
