@@ -67,5 +67,18 @@ internal sealed class LedgerEndpoints : IEndpoint
         .Produces(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status409Conflict)
         .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        group.MapGet("/streams/{id:guid}/events", async ([FromRoute] Guid id, [FromQuery] int? fromVersion, ISender sender, HttpContext ctx, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new GetLedgerEventsQuery
+            {
+                LedgerId = id,
+                FromVersion = fromVersion,
+            }, ct);
+
+            return result.Success ? Results.Ok(result.Value) : result.ToProblemDetails();
+        })
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status404NotFound);
     }
 }

@@ -24,11 +24,8 @@ internal sealed class LedgerRepository(LedgerDbContext ctx) : ILedgerRepository
         return await query.FirstOrDefaultAsync(ct);
     }
 
-    // Events are deliberately not included: an append only needs the write keys, and the log grows without bound.
     public async Task<LedgerStream?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        return await ctx.LedgerStream
-            .Include(l => l.WriteKeys)
-            .FirstOrDefaultAsync(l => l.Id == id, ct);
+        return await ctx.LedgerStream.FirstOrDefaultAsync(l => l.Id == id, ct);
     }
 }
