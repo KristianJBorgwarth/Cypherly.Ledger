@@ -3,6 +3,9 @@ using Ledger.API.Requests;
 using Ledger.Application.Commands.Append;
 using Ledger.Application.Commands.Archive;
 using Ledger.Application.Commands.Create;
+using Ledger.Application.Common;
+using Ledger.Application.Queries.GetEvents;
+using Ledger.Application.Queries.GetEvents;
 using Mediator;
 using Microsoft.AspNetCore.Mvc;
 
@@ -67,5 +70,19 @@ internal sealed class LedgerEndpoints : IEndpoint
         .Produces(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status409Conflict)
         .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        group.MapGet("/streams/{id:guid}/events", async ([FromRoute] Guid id, [FromQuery] int? fromVersion, [FromQuery] int? limit, ISender sender, HttpContext ctx, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new GetLedgerEventsQuery
+            {
+                LedgerId = id,
+                FromVersion = fromVersion ?? 1,
+                Limit = limit ?? LedgerQueryLimits.MaxEventsPerRead
+            }, ct);
+
+            return result.Success ? Results.Ok(result.Value) : result.ToProblemDetails();
+        })
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status404NotFound);
     }
 }

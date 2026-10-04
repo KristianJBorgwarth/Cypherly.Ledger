@@ -1,5 +1,6 @@
 using Ledger.Application.Abstractions;
 using Ledger.Domain.Aggregates;
+using Ledger.Domain.Entities;
 using Ledger.Infrastructure.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,11 +25,18 @@ internal sealed class LedgerRepository(LedgerDbContext ctx) : ILedgerRepository
         return await query.FirstOrDefaultAsync(ct);
     }
 
-    // Events are deliberately not included: an append only needs the write keys, and the log grows without bound.
+    public async Task<IReadOnlyList<LedgerEvent>> GetEventsAsync(Guid ledgerId, int fromVersion, int limit, CancellationToken ct = default)
+    {
+        return await ctx.LedgerEvent
+            .AsNoTracking()
+            .Where(e => e.StreamId == ledgerId && e.Version >= fromVersion)
+            .OrderBy(e => e.Version)
+            .Take(limit)
+            .ToListAsync(ct);
+    }
+
     public async Task<LedgerStream?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        return await ctx.LedgerStream
-            .Include(l => l.WriteKeys)
-            .FirstOrDefaultAsync(l => l.Id == id, ct);
+        return await ctx.LedgerStream.FirstOrDefaultAsync(l => l.Id == id, ct);
     }
 }

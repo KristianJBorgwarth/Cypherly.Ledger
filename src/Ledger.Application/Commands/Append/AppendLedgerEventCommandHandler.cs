@@ -14,7 +14,7 @@ public sealed class AppendLedgerEventCommandHandler(
 {
     public async ValueTask<Result> Handle(AppendLedgerEventCommand cmd, CancellationToken ct)
     {
-        var ledger = await ledgerRepository.GetByIdAsync(cmd.LedgerId, ct);
+        var ledger = await ledgerRepository.GetAsync(new LedgerWithWriteKeysSpec(cmd.LedgerId), ct);
 
         if (ledger is null)
             return Result.Fail(Error.NotFound<LedgerStream>(cmd.LedgerId.ToString()));
