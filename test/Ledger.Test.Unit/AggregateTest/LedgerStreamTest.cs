@@ -33,6 +33,22 @@ public class LedgerStreamTest
             removed ?? []);
     }
 
+    private static Result<LedgerEvent> Archive(
+        LedgerStream ledger,
+        byte[] writeKey,
+        byte[] eventHash,
+        int? expectedVersion = null,
+        byte[]? previousHash = null)
+    {
+        return ledger.Archive(
+            expectedVersion ?? ledger.Version,
+            previousHash ?? ledger.Hash,
+            eventHash,
+            [1, 2, 3],
+            writeKey,
+            Bytes(0x00, 64));
+    }
+
     private static void ShouldBeUnchanged(LedgerStream ledger, int version, byte[] hash, int events, params byte[][] keys)
     {
         ledger.Version.Should().Be(version);
@@ -170,13 +186,14 @@ public class LedgerStreamTest
     public void Append_ShouldFailWithNotFound_WhenArchived()
     {
         var ledger = new LedgerStream(Guid.NewGuid(), CreatorKey);
-        ledger.Archive(CreatorKey);
+        var archiveHash = Bytes(0x0A, 32);
+        Archive(ledger, CreatorKey, archiveHash);
 
         var result = Append(ledger, CreatorKey, Bytes(0x01, 32));
 
         result.Success.Should().BeFalse();
         result.Error!.Type.Should().Be(ErrorType.NotFound);
-        ShouldBeUnchanged(ledger, 0, new byte[32], 0, CreatorKey);
+        ShouldBeUnchanged(ledger, 1, archiveHash, 1, CreatorKey);
     }
 
     [Fact]
@@ -263,14 +280,19 @@ public class LedgerStreamTest
     }
 
     [Fact]
-    public void Archive_ShouldArchive_WhenKeyIsValid()
+    public void Archive_ShouldAppendEventAndArchive_WhenKeyIsValid()
     {
         var ledger = new LedgerStream(Guid.NewGuid(), CreatorKey);
+        var archiveHash = Bytes(0x0A, 32);
 
-        var result = ledger.Archive(CreatorKey);
+        var result = Archive(ledger, CreatorKey, archiveHash);
 
         result.Success.Should().BeTrue();
+        result.RequiredValue.Version.Should().Be(1);
         ledger.Archived.Should().BeTrue();
+        ledger.Version.Should().Be(1);
+        ledger.Hash.Should().Equal(archiveHash);
+        ledger.Events.Should().ContainSingle();
     }
 
     [Fact]
@@ -278,23 +300,25 @@ public class LedgerStreamTest
     {
         var ledger = new LedgerStream(Guid.NewGuid(), CreatorKey);
 
-        var result = ledger.Archive(UnknownKey);
+        var result = Archive(ledger, UnknownKey, Bytes(0x0A, 32));
 
         result.Success.Should().BeFalse();
         result.Error!.Type.Should().Be(ErrorType.Forbidden);
         ledger.Archived.Should().BeFalse();
+        ShouldBeUnchanged(ledger, 0, new byte[32], 0, CreatorKey);
     }
 
     [Fact]
     public void Archive_ShouldFailWithNotFound_WhenAlreadyArchived()
     {
         var ledger = new LedgerStream(Guid.NewGuid(), CreatorKey);
-        ledger.Archive(CreatorKey);
+        Archive(ledger, CreatorKey, Bytes(0x0A, 32));
 
-        var result = ledger.Archive(CreatorKey);
+        var result = Archive(ledger, CreatorKey, Bytes(0x0B, 32));
 
         result.Success.Should().BeFalse();
         result.Error!.Type.Should().Be(ErrorType.NotFound);
         ledger.Archived.Should().BeTrue();
+        ledger.Events.Should().ContainSingle();
     }
 }

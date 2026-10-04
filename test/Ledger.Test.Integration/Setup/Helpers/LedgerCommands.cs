@@ -1,4 +1,5 @@
 using Ledger.Application.Commands.Append;
+using Ledger.Application.Commands.Archive;
 using Ledger.Application.Commands.Create;
 using Ledger.Domain.Aggregates;
 using NSec.Cryptography;
@@ -25,6 +26,22 @@ public static class LedgerCommands
         Signature = [],
         KeysAdded = [],
         KeysRemoved = [],
+    };
+
+    public static ArchiveLedgerCommand Archive(LedgerStream ledger, byte[]? payload = null) => new()
+    {
+        LedgerId = ledger.Id,
+        ExpectedVersion = ledger.Version,
+        PreviousHash = ledger.Hash,
+        Payload = payload ?? [0xAA],
+        WriteKeyPublic = [],
+        Signature = [],
+    };
+
+    public static ArchiveLedgerCommand SignedBy(this ArchiveLedgerCommand cmd, Key key) => cmd with
+    {
+        WriteKeyPublic = LedgerSigner.PublicKeyOf(key),
+        Signature = LedgerSigner.Sign(key, cmd.LedgerId, cmd.ExpectedVersion + 1, cmd.PreviousHash, cmd.Payload),
     };
 
     public static CreateLedgerCommand SignedBy(this CreateLedgerCommand cmd, Key key) => cmd with

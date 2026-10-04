@@ -55,7 +55,11 @@ internal sealed class LedgerEndpoints : IEndpoint
             var result = await sender.Send(new ArchiveLedgerCommand
             {
                 LedgerId = id,
+                ExpectedVersion = req.ExpectedVersion,
+                PreviousHash = req.PreviousHash,
+                Payload = req.Payload,
                 WriteKeyPublic = req.WriteKeyPublic,
+                Signature = req.Signature,
             }, ct);
 
             return result.Success ? Results.Ok() : result.ToProblemDetails();
