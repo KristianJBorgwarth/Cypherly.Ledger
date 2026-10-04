@@ -2,9 +2,10 @@ using Ledger.Domain.Abstractions;
 
 namespace Ledger.Application.Abstractions;
 
-public interface IRepository<TEntity> where TEntity : AggregateRoot
+public interface IRepository<T> where T : Entity
 {
-    Task<TEntity> CreateAsync(TEntity entity, CancellationToken cancellationToken = default);
-    Task<TEntity?> GetByIdAsync(Guid tenantId, CancellationToken cancellationToken = default);
-    Task DeleteAsync(TEntity entity, CancellationToken cancellationToken = default);
+    Task<T?> GetAsync(ISpecification<T> spec, CancellationToken ct = default);
+    Task CreateAsync(T entity, CancellationToken ct = default);
+    void Delete(T entity);
+    Task<T> GetByIdAsync(Guid id, CancellationToken ct = default);
 }

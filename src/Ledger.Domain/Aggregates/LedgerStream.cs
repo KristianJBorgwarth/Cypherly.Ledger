@@ -14,8 +14,8 @@ public sealed class LedgerStream : AggregateRoot
     private readonly List<LedgerWriteKey> _writeKeys = [];
     private readonly List<LedgerEvent> _events = [];
 
-    public int HeadVersion { get; private set; }
-    public byte[] HeadHash { get; private set; } = new byte[32];
+    public int Version { get; private set; }
+    public byte[] Hash { get; private set; } = new byte[32];
     public bool Archived { get; private set; }
     public IReadOnlyCollection<LedgerWriteKey> WriteKeys => _writeKeys.AsReadOnly();
     public IReadOnlyCollection<LedgerEvent> Events => _events.AsReadOnly();
@@ -54,15 +54,15 @@ public sealed class LedgerStream : AggregateRoot
         if (!HasWriteKey(writeKeyPublic))
             return Result.Fail<LedgerEvent>(Error.Forbidden("Write key is not authorized for this ledger."));
 
-        if (expectedVersion != HeadVersion || !previousHash.AsSpan().SequenceEqual(HeadHash))
-            return Result.Fail<LedgerEvent>(Error.Conflict($"Ledger is at version {HeadVersion}, append expected {expectedVersion}."));
+        if (expectedVersion != Version || !previousHash.AsSpan().SequenceEqual(Hash))
+            return Result.Fail<LedgerEvent>(Error.Conflict($"Ledger is at version {Version}, append expected {expectedVersion}."));
 
         var remaining = _writeKeys.Count(k => !keysRemoved.Any(r => r.AsSpan().SequenceEqual(k.PublicKey))) + keysAdded.Count(k => !HasWriteKey(k));
 
         if (remaining == 0)
             return Result.Fail<LedgerEvent>(Error.Validation("Append would leave the ledger without write keys."));
 
-        var evt = new LedgerEvent(Id, HeadVersion + 1, payload, previousHash, writeKeyPublic, signature);
+        var evt = new LedgerEvent(Id, Version + 1, payload, previousHash, writeKeyPublic, signature);
 
         _events.Add(evt);
 
@@ -72,10 +72,32 @@ public sealed class LedgerStream : AggregateRoot
         foreach (var key in keysAdded.Where(k => !HasWriteKey(k)))
             _writeKeys.Add(new LedgerWriteKey(Id, key));
 
-        HeadVersion = evt.Version;
-        HeadHash = eventHash;
+        Version = evt.Version;
+        Hash = eventHash;
 
         return evt;
+    }
+
+    public static Result<LedgerStream> Initialize(
+        Guid id,
+        byte[] creatorWriteKey,
+        byte[] payload,
+        byte[] eventhash,
+        byte[] signature)
+    {
+        var ledger = new LedgerStream(id, creatorWriteKey);
+
+        var append = ledger.Append(
+            expectedVersion: 0,
+            eventHash: eventhash,
+            previousHash: new byte[32],
+            payload: payload,
+            writeKeyPublic: creatorWriteKey,
+            signature: signature,
+            keysAdded: [],
+            keysRemoved: []);
+
+        return append.Success ? ledger : Result.Fail<LedgerStream>(append.Error);
     }
 
     public Result Archive(byte[] writeKeyPublic)

@@ -17,12 +17,12 @@ public sealed class LedgerStreamModelConfiguration : BaseModelConfiguration<Ledg
             .ValueGeneratedNever()
             .IsRequired();
 
-        builder.Property(x => x.HeadVersion)
+        builder.Property(x => x.Version)
             .HasColumnName("head_version")
             .IsConcurrencyToken()
             .IsRequired();
 
-        builder.Property(x => x.HeadHash)
+        builder.Property(x => x.Hash)
             .HasColumnName("head_hash")
             .HasMaxLength(32)
             .IsRequired();

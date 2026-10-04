@@ -23,8 +23,8 @@ public class LedgerStreamTest
         byte[]? previousHash = null)
     {
         return ledger.Append(
-            expectedVersion ?? ledger.HeadVersion,
-            previousHash ?? ledger.HeadHash,
+            expectedVersion ?? ledger.Version,
+            previousHash ?? ledger.Hash,
             eventHash,
             [1, 2, 3],
             writeKey,
@@ -35,8 +35,8 @@ public class LedgerStreamTest
 
     private static void ShouldBeUnchanged(LedgerStream ledger, int version, byte[] hash, int events, params byte[][] keys)
     {
-        ledger.HeadVersion.Should().Be(version);
-        ledger.HeadHash.Should().Equal(hash);
+        ledger.Version.Should().Be(version);
+        ledger.Hash.Should().Equal(hash);
         ledger.Events.Should().HaveCount(events);
         ledger.WriteKeys.Should().HaveCount(keys.Length);
         foreach (var key in keys)
@@ -48,8 +48,8 @@ public class LedgerStreamTest
     {
         var ledger = new LedgerStream(Guid.NewGuid(), CreatorKey);
 
-        ledger.HeadVersion.Should().Be(0);
-        ledger.HeadHash.Should().Equal(new byte[32]);
+        ledger.Version.Should().Be(0);
+        ledger.Hash.Should().Equal(new byte[32]);
         ledger.Events.Should().BeEmpty();
         ledger.Archived.Should().BeFalse();
         ledger.WriteKeys.Should().ContainSingle();
@@ -92,8 +92,8 @@ public class LedgerStreamTest
 
         Append(ledger, CreatorKey, eventHash);
 
-        ledger.HeadVersion.Should().Be(1);
-        ledger.HeadHash.Should().Equal(eventHash);
+        ledger.Version.Should().Be(1);
+        ledger.Hash.Should().Equal(eventHash);
     }
 
     [Fact]
@@ -109,8 +109,8 @@ public class LedgerStreamTest
         first.RequiredValue.Version.Should().Be(1);
         second.RequiredValue.Version.Should().Be(2);
         second.RequiredValue.PreviousHash.Should().Equal(firstHash);
-        ledger.HeadVersion.Should().Be(2);
-        ledger.HeadHash.Should().Equal(secondHash);
+        ledger.Version.Should().Be(2);
+        ledger.Hash.Should().Equal(secondHash);
         ledger.Events.Should().HaveCount(2);
     }
 
