@@ -11,6 +11,8 @@ public sealed class LedgerEvent : Entity
     public byte[] PreviousHash { get; private set; }
     public byte[] WriteKeyPublic { get; private set; }
     public byte[] Signature { get; private set; }
+    public List<byte[]> KeysAdded { get; private set; } = [];
+    public List<byte[]> KeysRemoved { get; private set; } = [];
 
     private LedgerEvent(Guid id) : base(id) { } // For EF Core
 
@@ -20,7 +22,9 @@ public sealed class LedgerEvent : Entity
         byte[] payload, 
         byte[] previousHash, 
         byte[] writeKeyPublic, 
-        byte[] signature) : base(Guid.NewGuid())
+        byte[] signature,
+        IEnumerable<byte[]> keysAdded,
+        IEnumerable<byte[]> keysRemoved) : base(Guid.NewGuid())
     {
         StreamId = streamId;
         Version = version;
@@ -28,5 +32,7 @@ public sealed class LedgerEvent : Entity
         PreviousHash = previousHash;
         WriteKeyPublic = writeKeyPublic;
         Signature = signature;
+        KeysAdded = [.. keysAdded];
+        KeysRemoved = [.. keysRemoved];
     }
 }

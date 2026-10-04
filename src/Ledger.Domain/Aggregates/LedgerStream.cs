@@ -62,7 +62,7 @@ public sealed class LedgerStream : AggregateRoot
         if (remaining == 0)
             return Result.Fail<LedgerEvent>(Error.Validation("Append would leave the ledger without write keys."));
 
-        var evt = new LedgerEvent(Id, Version + 1, payload, previousHash, writeKeyPublic, signature);
+        var evt = new LedgerEvent(Id, Version + 1, payload, previousHash, writeKeyPublic, signature, keysAdded, keysRemoved);
 
         _events.Add(evt);
 

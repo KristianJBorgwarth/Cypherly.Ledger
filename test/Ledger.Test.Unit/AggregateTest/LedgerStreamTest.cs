@@ -131,6 +131,20 @@ public class LedgerStreamTest
     }
 
     [Fact]
+    public void Append_ShouldRecordKeyMutations_OnEvent()
+    {
+        var ledger = new LedgerStream(Guid.NewGuid(), CreatorKey);
+        Append(ledger, CreatorKey, Bytes(0x01, 32), added: [OtherKey]);
+
+        var result = Append(ledger, CreatorKey, Bytes(0x02, 32), removed: [OtherKey]);
+
+        ledger.Events.First().KeysAdded.Should().ContainSingle().Which.Should().Equal(OtherKey);
+        ledger.Events.First().KeysRemoved.Should().BeEmpty();
+        result.RequiredValue.KeysRemoved.Should().ContainSingle().Which.Should().Equal(OtherKey);
+        result.RequiredValue.KeysAdded.Should().BeEmpty();
+    }
+
+    [Fact]
     public void Append_ShouldGrantKey_WhenKeyAdded()
     {
         var ledger = new LedgerStream(Guid.NewGuid(), CreatorKey);
