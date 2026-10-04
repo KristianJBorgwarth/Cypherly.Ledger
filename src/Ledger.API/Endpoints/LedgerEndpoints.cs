@@ -1,6 +1,7 @@
 using Ledger.API.Common;
 using Ledger.API.Requests;
 using Ledger.Application.Commands.Append;
+using Ledger.Application.Commands.Archive;
 using Ledger.Application.Commands.Create;
 using Mediator;
 using Microsoft.AspNetCore.Mvc;
@@ -41,6 +42,20 @@ internal sealed class LedgerEndpoints : IEndpoint
                 Signature = req.Signature,
                 KeysAdded = req.KeysAdded,
                 KeysRemoved = req.KeysRemoved
+            }, ct);
+
+            return result.Success ? Results.Ok() : result.ToProblemDetails();
+        })
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status409Conflict)
+        .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        group.MapPut("/streams/{id:guid}/archive", async ([FromRoute] Guid id, [FromBody] ArchiveLedgerRequest req, ISender sender, HttpContext ctx, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new ArchiveLedgerCommand
+            {
+                LedgerId = id,
+                WriteKeyPublic = req.WriteKeyPublic,
             }, ct);
 
             return result.Success ? Results.Ok() : result.ToProblemDetails();
