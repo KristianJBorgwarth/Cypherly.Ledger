@@ -1,26 +1,34 @@
 using Ledger.Application.Abstractions;
 using Ledger.Domain.Aggregates;
 using Ledger.Infrastructure.Persistence.Context;
+using Microsoft.EntityFrameworkCore;
 
 internal sealed class LedgerRepository(LedgerDbContext ctx) : ILedgerRepository
 {
-    public Task CreateAsync(LedgerStream entity, CancellationToken ct = default)
+    public async Task CreateAsync(LedgerStream entity, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        await ctx.LedgerStream.AddAsync(entity, ct);
     }
 
     public void Delete(LedgerStream entity)
     {
-        throw new NotImplementedException();
+        ctx.LedgerStream.Remove(entity);
     }
 
-    public Task<LedgerStream?> GetAsync(ISpecification<LedgerStream> spec, CancellationToken ct = default)
+    public async Task<LedgerStream?> GetAsync(ISpecification<LedgerStream> spec, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        var query = ctx.LedgerStream.Where(spec.Criteria);
+
+        query = spec.Includes.Aggregate(query, (current, include) => current.Include(include));
+
+        return await query.FirstOrDefaultAsync(ct);
     }
 
-    public Task<LedgerStream> GetByIdAsync(Guid id, CancellationToken ct = default)
+    // Events are deliberately not included: an append only needs the write keys, and the log grows without bound.
+    public async Task<LedgerStream?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        return await ctx.LedgerStream
+            .Include(l => l.WriteKeys)
+            .FirstOrDefaultAsync(l => l.Id == id, ct);
     }
 }

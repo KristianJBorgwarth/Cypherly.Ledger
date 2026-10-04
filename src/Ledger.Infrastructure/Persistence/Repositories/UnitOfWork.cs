@@ -1,9 +1,11 @@
 using System.Text.Json;
 using Ledger.Application.Abstractions;
+using Ledger.Application.Exceptions;
 using Ledger.Domain.Abstractions;
 using Ledger.Infrastructure.Persistence.Context;
 using Ledger.Infrastructure.Persistence.Outbox;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Ledger.Infrastructure.Persistence.Repositories;
 
@@ -16,7 +18,19 @@ public class UnitOfWork(LedgerDbContext context) : IUnitOfWork
     {
         ConvertDomainEventsToOutboxMessages();
         UpdateAuditableEntities();
-        await context.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException e)
+        {
+            throw new ConcurrencyConflictException("The entity was modified by another writer.", e);
+        }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            throw new ConcurrencyConflictException("A conflicting row already exists.", e);
+        }
     }
 
     /// <summary>

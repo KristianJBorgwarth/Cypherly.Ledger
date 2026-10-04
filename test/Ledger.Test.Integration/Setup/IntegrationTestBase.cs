@@ -25,6 +25,8 @@ public class IntegrationTestBase : IDisposable
 
     public void Dispose()
     {
+        Db.LedgerEvent.ExecuteDelete();
+        Db.LedgerStream.ExecuteDelete();
         Db.OutboxMessage.ExecuteDelete();
         Client.Dispose();
         _scope.Dispose();
