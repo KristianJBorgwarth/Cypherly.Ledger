@@ -5,9 +5,12 @@ using Ledger.Application.Commands.Archive;
 using Ledger.Application.Commands.Create;
 using Ledger.Application.Common;
 using Ledger.Application.Queries.GetEvents;
+using Ledger.Application.Queries.GetHead;
 using Ledger.Application.Queries.GetEvents;
+using Ledger.Application.Queries.GetHead;
 using Mediator;
 using Microsoft.AspNetCore.Mvc;
+using Ledger.Application.Dto;
 
 internal sealed class LedgerEndpoints : IEndpoint
 {
@@ -82,7 +85,16 @@ internal sealed class LedgerEndpoints : IEndpoint
 
             return result.Success ? Results.Ok(result.Value) : result.ToProblemDetails();
         })
-        .Produces(StatusCodes.Status200OK)
+        .Produces<LedgerEventDto>(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapGet("/streams/{id:guid}/head", async ([FromRoute] Guid id, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new GetLedgerHeadQuery { LedgerId = id }, ct);
+
+            return result.Success ? Results.Ok(result.Value) : result.ToProblemDetails();
+        })
+        .Produces<LedgerHeadDto>(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status404NotFound);
     }
 }
