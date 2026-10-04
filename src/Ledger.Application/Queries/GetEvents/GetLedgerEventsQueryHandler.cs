@@ -1,12 +1,31 @@
 using Ledger.Application.Abstractions;
-using Ledger.Application.Queries.GetEvents;
+using Ledger.Application.Dto;
+using Ledger.Domain.Aggregates;
 using Ledger.Domain.Common;
-using Ledger.Domain.Entities;
 
-public sealed class GetLedgerEventsQueryHandler : IQueryHandler<GetLedgerEventsQuery, LedgerEvent>
+namespace Ledger.Application.Queries.GetEvents;
+
+public sealed class GetLedgerEventsQueryHandler(
+    ILedgerRepository ledgerRepository)
+    : IQueryHandler<GetLedgerEventsQuery, LedgerEventsDto>
 {
-    public ValueTask<Result<LedgerEvent>> Handle(GetLedgerEventsQuery request, CancellationToken cancellationToken)
+    public async ValueTask<Result<LedgerEventsDto>> Handle(GetLedgerEventsQuery q, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        var ledger = await ledgerRepository.GetByIdAsync(q.LedgerId, ct);
+
+        if (ledger is null)
+            return Result.Fail<LedgerEventsDto>(Error.NotFound<LedgerStream>(q.LedgerId.ToString()));
+
+        var events = await ledgerRepository.GetEventsAsync(q.LedgerId, q.FromVersion, q.Limit + 1, ct);
+
+        var hasMore = events.Count > q.Limit;
+
+        return Result.Ok(new LedgerEventsDto
+        {
+            Version = ledger.Version,
+            Archived = ledger.Archived,
+            HasMore = hasMore,
+            Events = [.. events.Take(q.Limit).Select(LedgerEventDto.MapFrom)],
+        });
     }
 }
