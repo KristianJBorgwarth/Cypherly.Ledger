@@ -100,15 +100,29 @@ public sealed class LedgerStream : AggregateRoot
         return append.Success ? ledger : Result.Fail<LedgerStream>(append.Error);
     }
 
-    public Result Archive(byte[] writeKeyPublic)
+    public Result<LedgerEvent> Archive(
+        int expectedVersion,
+        byte[] previousHash,
+        byte[] eventHash,
+        byte[] payload,
+        byte[] writeKeyPublic,
+        byte[] signature)
     {
-        if (Archived)
-            return Result.Fail(Error.NotFound<LedgerStream>(Id.ToString()));
+        var append = Append(
+            expectedVersion: expectedVersion,
+            previousHash: previousHash,
+            eventHash: eventHash,
+            payload: payload,
+            writeKeyPublic: writeKeyPublic,
+            signature: signature,
+            keysAdded: [],
+            keysRemoved: []);
 
-        if (!HasWriteKey(writeKeyPublic))
-            return Result.Fail(Error.Forbidden("Write key is not authorized for this ledger."));
+        if (append.Success is false)
+            return append;
 
         Archived = true;
-        return Result.Ok();
+
+        return append;
     }
 }
