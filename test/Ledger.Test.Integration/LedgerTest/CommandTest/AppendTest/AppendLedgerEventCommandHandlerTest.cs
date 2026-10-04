@@ -161,6 +161,26 @@ public class AppendLedgerEventCommandHandlerTest : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Handle_Given_Key_Mutations_Should_Persist_Them_On_The_Event()
+    {
+        // Arrange
+        var ledger = await LedgerFactory.SeedAsync(Db, _creator);
+        var newMember = LedgerSigner.PublicKeyOf(LedgerSigner.NewKey());
+
+        var command = (LedgerCommands.Append(ledger) with { KeysAdded = [newMember] }).SignedBy(_creator);
+
+        // Act
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeTrue();
+
+        var stored = await Db.LedgerEvent.AsNoTracking().SingleAsync(e => e.StreamId == ledger.Id && e.Version == 2);
+        stored.KeysAdded.Should().ContainSingle().Which.Should().Equal(newMember);
+        stored.KeysRemoved.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Handle_Given_Key_Removed_Should_Reject_That_Key_Afterwards()
     {
         // Arrange
