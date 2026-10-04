@@ -1,3 +1,5 @@
+using Ledger.Test.Integration.Setup.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +33,14 @@ public class IntegrationTestFactory<TProgram, TDbContext> : WebApplicationFactor
                 options.UseNpgsql(_dbContainer.GetConnectionString(),
                     b => b.MigrationsAssembly(typeof(TDbContext).Assembly.FullName));
             });
+
+            #endregion
+
+            #region Authentication
+
+            // The real scheme needs an identity server, so tests authenticate every request instead.
+            services.AddAuthentication(TestAuthHandler.Scheme)
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.Scheme, _ => { });
 
             #endregion
         });
