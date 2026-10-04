@@ -18,22 +18,39 @@ public sealed class CreateLedgerCommandHandler(
     {
         var existingLedger = await ledgerRepository.GetByIdAsync(cmd.LedgerId, ct);
 
-        if(signatureHelper.IsValidSignature(cmd.LedgerId, FirstVersion, FirstPreviousHash, cmd.Payload, cmd.WriteKey, cmd.Signature, [], []) is false)
-            return Result.Fail(Error.Validation("Invalid signature."));
+        if (signatureHelper.IsValidSignature(
+                ledgerId: cmd.LedgerId,
+                version: FirstVersion,
+                previousHash: FirstPreviousHash,
+                payload: cmd.Payload,
+                writeKeyPublic: cmd.WriteKey,
+                signature: cmd.Signature,
+                keysAdded: [],
+                keysRemoved: []) is false)
+            return Result.Fail(Error.Forbidden("Invalid signature."));
 
         if(existingLedger is not null)
             return Result.Fail(Error.Conflict("Ledger already exists."));
 
-        var evtHash = signatureHelper.GenerateHash(cmd.LedgerId, FirstVersion, FirstPreviousHash, cmd.Payload, [], []);
+        var evtHash = signatureHelper.GenerateHash(
+            ledgerId: cmd.LedgerId,
+            version: FirstVersion,
+            previousHash: FirstPreviousHash,
+            payload: cmd.Payload,
+            keysAdded: [],
+            keysRemoved: []);
 
-        var ledger = LedgerStream.Initialize(
-            cmd.LedgerId,
-            cmd.WriteKey,
-            cmd.Payload,
-            evtHash,
-            cmd.Signature);
+        var ledgerResult = LedgerStream.Initialize(
+            id: cmd.LedgerId,
+            creatorWriteKey: cmd.WriteKey,
+            payload: cmd.Payload,
+            eventhash: evtHash,
+            signature: cmd.Signature);
 
-        await ledgerRepository.CreateAsync(ledger, ct);
+        if(ledgerResult.Success is false)
+            return ledgerResult;
+
+        await ledgerRepository.CreateAsync(ledgerResult.RequiredValue, ct);
 
         await unitOfWork.SaveChangesAsync(ct);
 

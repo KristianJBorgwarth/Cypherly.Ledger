@@ -12,7 +12,9 @@ public sealed class AppendLedgerEventCommandValidator : AbstractValidator<Append
         RuleFor(x => x.Payload).NotEmpty();
         RuleFor(x => x.WriteKeyPublic).Must(k => k.Length == 32);
         RuleFor(x => x.Signature).Must(s => s.Length == 64);
+        RuleFor(x => x.KeysAdded).NotNull();
         RuleForEach(x => x.KeysAdded).Must(k => k.Length == 32);
+        RuleFor(x => x.KeysRemoved).NotNull();
         RuleForEach(x => x.KeysRemoved).Must(k => k.Length == 32);
     }
 }

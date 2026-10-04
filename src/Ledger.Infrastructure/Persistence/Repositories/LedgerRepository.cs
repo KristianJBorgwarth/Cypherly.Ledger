@@ -19,7 +19,7 @@ internal sealed class LedgerRepository(LedgerDbContext ctx) : ILedgerRepository
         throw new NotImplementedException();
     }
 
-    public Task<LedgerStream> GetByIdAsync(Guid id, CancellationToken ct = default)
+    public Task<LedgerStream?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         throw new NotImplementedException();
     }
