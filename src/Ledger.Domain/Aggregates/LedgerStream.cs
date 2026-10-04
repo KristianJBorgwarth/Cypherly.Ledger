@@ -15,7 +15,7 @@ public sealed class LedgerStream : AggregateRoot
     private readonly List<LedgerEvent> _events = [];
 
     public int Version { get; private set; }
-    public byte[] HeadHash { get; private set; } = new byte[32];
+    public byte[] Hash { get; private set; } = new byte[32];
     public bool Archived { get; private set; }
     public IReadOnlyCollection<LedgerWriteKey> WriteKeys => _writeKeys.AsReadOnly();
     public IReadOnlyCollection<LedgerEvent> Events => _events.AsReadOnly();
@@ -54,7 +54,7 @@ public sealed class LedgerStream : AggregateRoot
         if (!HasWriteKey(writeKeyPublic))
             return Result.Fail<LedgerEvent>(Error.Forbidden("Write key is not authorized for this ledger."));
 
-        if (expectedVersion != Version || !previousHash.AsSpan().SequenceEqual(HeadHash))
+        if (expectedVersion != Version || !previousHash.AsSpan().SequenceEqual(Hash))
             return Result.Fail<LedgerEvent>(Error.Conflict($"Ledger is at version {Version}, append expected {expectedVersion}."));
 
         var remaining = _writeKeys.Count(k => !keysRemoved.Any(r => r.AsSpan().SequenceEqual(k.PublicKey))) + keysAdded.Count(k => !HasWriteKey(k));
@@ -73,7 +73,7 @@ public sealed class LedgerStream : AggregateRoot
             _writeKeys.Add(new LedgerWriteKey(Id, key));
 
         Version = evt.Version;
-        HeadHash = eventHash;
+        Hash = eventHash;
 
         return evt;
     }

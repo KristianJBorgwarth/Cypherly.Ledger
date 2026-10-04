@@ -9,7 +9,9 @@ public interface ISignatureHelper
         Guid ledgerId, 
         int version, 
         byte[] previousHash, 
-        byte[] payload);
+        byte[] payload,
+        IReadOnlyCollection<byte[]> keysAdded,
+        IReadOnlyCollection<byte[]> keysRemoved);
 
     /// <summary>
     /// Validates the signature for the given ledger event data.
@@ -20,5 +22,7 @@ public interface ISignatureHelper
         byte[] previousHash, 
         byte[] payload, 
         byte[] writeKeyPublic, 
-        byte[] signature);
+        byte[] signature,
+        IReadOnlyCollection<byte[]> keysAdded,
+        IReadOnlyCollection<byte[]> keysRemoved);
 }
