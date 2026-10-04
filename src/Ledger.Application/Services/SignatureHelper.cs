@@ -2,6 +2,7 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using Ledger.Application.Interfaces;
+using NSec.Cryptography;
 
 internal sealed class SignatureHelper : ISignatureHelper
 {
@@ -23,7 +24,14 @@ internal sealed class SignatureHelper : ISignatureHelper
         byte[] writeKeyPublic, 
         byte[] signature)
     {
-        throw new NotImplementedException();
+        var algorithm = SignatureAlgorithm.Ed25519;
+
+        if (!PublicKey.TryImport(algorithm, writeKeyPublic, KeyBlobFormat.RawPublicKey, out var key))
+            return false;
+
+        var signingInput = SigningInput(ledgerId, version, previousHash, payload);
+
+        return algorithm.Verify(key!, signingInput, signature);
     }
 
     /// <summary>

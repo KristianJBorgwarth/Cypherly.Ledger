@@ -9,7 +9,6 @@ public sealed class AppendLedgerEventCommandValidator : AbstractValidator<Append
         RuleFor(x => x.LedgerId).NotEmpty();
         RuleFor(x => x.ExpectedVersion).GreaterThanOrEqualTo(0);
         RuleFor(x => x.PreviousHash).NotEmpty();
-        RuleFor(x => x.EventHash).NotEmpty();
         RuleFor(x => x.Payload).NotEmpty();
         RuleFor(x => x.WriteKeyPublic).NotEmpty();
         RuleFor(x => x.Signature).NotEmpty();
