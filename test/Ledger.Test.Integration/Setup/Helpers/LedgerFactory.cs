@@ -20,7 +20,8 @@ public static class LedgerFactory
             creatorWriteKey: LedgerSigner.PublicKeyOf(creator),
             payload: payload,
             eventhash: LedgerSigner.Hash(id, GenesisVersion, GenesisHash, payload),
-            signature: LedgerSigner.Sign(creator, id, GenesisVersion, GenesisHash, payload)).RequiredValue;
+            signature: LedgerSigner.Sign(creator, id, GenesisVersion, GenesisHash, payload),
+            keysAdded: []).RequiredValue;
 
         await db.LedgerStream.AddAsync(ledger);
         await db.SaveChangesAsync();

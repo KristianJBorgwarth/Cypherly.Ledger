@@ -47,14 +47,16 @@ public class CreateLedgerCommandHandlerTest : IntegrationTestBase
 
         stored.Version.Should().Be(LedgerFactory.GenesisVersion);
         stored.Archived.Should().BeFalse();
-        stored.Hash.Should().Equal(LedgerSigner.Hash(ledgerId, LedgerFactory.GenesisVersion, LedgerFactory.GenesisHash, command.Payload));
-        stored.WriteKeys.Should().ContainSingle().Which.PublicKey.Should().Equal(LedgerSigner.PublicKeyOf(_creator));
+        stored.Hash.Should().Equal(LedgerSigner.Hash(ledgerId, LedgerFactory.GenesisVersion, LedgerFactory.GenesisHash, command.Payload, command.KeysAdded));
+        stored.WriteKeys.Select(k => k.PublicKey).Should().BeEquivalentTo(
+            command.KeysAdded.Prepend(LedgerSigner.PublicKeyOf(_creator)));
 
         var evt = stored.Events.Should().ContainSingle().Subject;
         evt.Version.Should().Be(LedgerFactory.GenesisVersion);
         evt.Payload.Should().Equal(command.Payload);
         evt.PreviousHash.Should().Equal(LedgerFactory.GenesisHash);
         evt.WriteKeyPublic.Should().Equal(LedgerSigner.PublicKeyOf(_creator));
+        evt.KeysAdded.Should().BeEquivalentTo(command.KeysAdded);
     }
 
     [Fact]
@@ -80,6 +82,24 @@ public class CreateLedgerCommandHandlerTest : IntegrationTestBase
     {
         // Arrange
         var command = LedgerCommands.Create(Guid.NewGuid()).SignedBy(_creator) with { Payload = [9, 9, 9] };
+
+        // Act
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Error!.Type.Should().Be(ErrorType.Forbidden);
+        Db.LedgerStream.AsNoTracking().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_Given_Keys_Added_Changed_After_Signing_Should_Return_Forbidden()
+    {
+        // Arrange
+        var command = LedgerCommands.Create(Guid.NewGuid()).SignedBy(_creator) with
+        {
+            KeysAdded = [LedgerSigner.PublicKeyOf(LedgerSigner.NewKey())],
+        };
 
         // Act
         var result = await _sut.Handle(command, CancellationToken.None);
