@@ -83,7 +83,8 @@ public sealed class LedgerStream : AggregateRoot
         byte[] creatorWriteKey,
         byte[] payload,
         byte[] eventhash,
-        byte[] signature)
+        byte[] signature,
+        IReadOnlyCollection<byte[]> keysAdded)
     {
         var ledger = new LedgerStream(id, creatorWriteKey);
 
@@ -94,7 +95,7 @@ public sealed class LedgerStream : AggregateRoot
             payload: payload,
             writeKeyPublic: creatorWriteKey,
             signature: signature,
-            keysAdded: [],
+            keysAdded: keysAdded,
             keysRemoved: []);
 
         return append.Success ? ledger : Result.Fail<LedgerStream>(append.Error);
