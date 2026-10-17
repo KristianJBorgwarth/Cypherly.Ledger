@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
+using Ledger.Application.Common;
 using Ledger.Application.Interfaces;
 using NSec.Cryptography;
 
@@ -64,6 +65,32 @@ internal sealed class SignatureHelper : ISignatureHelper
 
     // Count-prefixed and sorted: the count keeps the lists unambiguous against each other and the payload,
     // the sort makes the signature independent of the order the client happened to send them in.
+    public bool IsValidReadSignature(Guid ledgerId, long timestamp, byte[] writeKeyPublic, byte[] signature)
+    {
+        if (Math.Abs(DateTimeOffset.UtcNow.ToUnixTimeSeconds() - timestamp) > LedgerQueryLimits.ReadSignatureMaxAgeSeconds)
+            return false;
+
+        var algorithm = SignatureAlgorithm.Ed25519;
+
+        if (!PublicKey.TryImport(algorithm, writeKeyPublic, KeyBlobFormat.RawPublicKey, out var key))
+            return false;
+
+        return algorithm.Verify(key!, ReadSigningInput(ledgerId, timestamp), signature);
+    }
+
+    private static byte[] ReadSigningInput(Guid ledgerId, long timestamp)
+    {
+        var timestampBytes = new byte[8];
+        BinaryPrimitives.WriteInt64BigEndian(timestampBytes, timestamp);
+
+        using var input = new MemoryStream();
+        input.Write("ledger-read-v1"u8);
+        input.Write(ledgerId.ToByteArray(bigEndian: true));
+        input.Write(timestampBytes);
+
+        return input.ToArray();
+    }
+
     private static void WriteKeys(Stream input, IReadOnlyCollection<byte[]> keys)
     {
         input.Write(BigEndian(keys.Count));
