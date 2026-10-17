@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Ledger.Application.Commands.Create;
+using Ledger.Application.Common;
 
 namespace Ledger.Test.Unit.ValidatorTest;
 
@@ -55,5 +56,30 @@ public class CreateLedgerCommandValidatorTest
         // Assert
         result.IsValid.Should().BeFalse();
         result.Errors.Should().ContainSingle().Which.PropertyName.Should().StartWith(nameof(CreateLedgerCommand.KeysAdded));
+    }
+
+    [Fact]
+    public void Validate_Given_Payload_Over_Limit_Should_Be_Invalid()
+    {
+        // Arrange
+        var command = Command(3) with { Payload = Bytes(0x04, LedgerQueryLimits.MaxPayloadBytes + 1) };
+
+        // Act
+        var result = _sut.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be(nameof(CreateLedgerCommand.Payload));
+    }
+
+    [Fact]
+    public void Validate_Given_Too_Many_Keys_Added_Should_Be_Invalid()
+    {
+        // Act
+        var result = _sut.Validate(Command(LedgerQueryLimits.MaxKeysPerEvent + 1));
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be(nameof(CreateLedgerCommand.KeysAdded));
     }
 }
