@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using FluentAssertions;
+using Ledger.Application.Common;
 using Ledger.Application.Services;
 using NSec.Cryptography;
 
@@ -224,6 +225,102 @@ public class SignatureHelperTest
         var key = NewKey();
 
         var valid = _sut.IsValidSignature(_ledgerId, 1, _previousHash, _payload, Public(key), Bytes(0xFF, length), [], []);
+
+        valid.Should().BeFalse();
+    }
+
+    private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+    private static byte[] ExpectedReadSigningInput(Guid ledgerId, long timestamp)
+    {
+        var timestampBytes = new byte[8];
+        BinaryPrimitives.WriteInt64BigEndian(timestampBytes, timestamp);
+
+        using var input = new MemoryStream();
+        input.Write("ledger-read-v1"u8);
+        input.Write(ledgerId.ToByteArray(bigEndian: true));
+        input.Write(timestampBytes);
+
+        return input.ToArray();
+    }
+
+    [Fact]
+    public void IsValidReadSignature_Given_Fresh_Signature_Should_Be_Valid()
+    {
+        var key = NewKey();
+        var now = Now();
+
+        var valid = _sut.IsValidReadSignature(_ledgerId, now, Public(key), Ed25519.Sign(key, ExpectedReadSigningInput(_ledgerId, now)));
+
+        valid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsValidReadSignature_Given_Signature_For_Another_Ledger_Should_Be_Invalid()
+    {
+        var key = NewKey();
+        var now = Now();
+
+        var valid = _sut.IsValidReadSignature(_ledgerId, now, Public(key), Ed25519.Sign(key, ExpectedReadSigningInput(Guid.NewGuid(), now)));
+
+        valid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsValidReadSignature_Given_Signature_From_Another_Key_Should_Be_Invalid()
+    {
+        var now = Now();
+
+        var valid = _sut.IsValidReadSignature(_ledgerId, now, Public(NewKey()), Ed25519.Sign(NewKey(), ExpectedReadSigningInput(_ledgerId, now)));
+
+        valid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsValidReadSignature_Given_Append_Signature_Should_Be_Invalid()
+    {
+        var key = NewKey();
+        var now = Now();
+
+        var valid = _sut.IsValidReadSignature(_ledgerId, now, Public(key), Sign(key));
+
+        valid.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(1)]
+    public void IsValidReadSignature_Given_Timestamp_Outside_Window_Should_Be_Invalid(int direction)
+    {
+        var key = NewKey();
+        var timestamp = Now() + direction * (LedgerQueryLimits.ReadSignatureMaxAgeSeconds + 5);
+
+        var valid = _sut.IsValidReadSignature(_ledgerId, timestamp, Public(key), Ed25519.Sign(key, ExpectedReadSigningInput(_ledgerId, timestamp)));
+
+        valid.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(31)]
+    public void IsValidReadSignature_Given_Malformed_Key_Should_Be_Invalid(int length)
+    {
+        var key = NewKey();
+        var now = Now();
+
+        var valid = _sut.IsValidReadSignature(_ledgerId, now, Bytes(0x01, length), Ed25519.Sign(key, ExpectedReadSigningInput(_ledgerId, now)));
+
+        valid.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(63)]
+    public void IsValidReadSignature_Given_Malformed_Signature_Should_Be_Invalid(int length)
+    {
+        var key = NewKey();
+
+        var valid = _sut.IsValidReadSignature(_ledgerId, Now(), Public(key), Bytes(0xFF, length));
 
         valid.Should().BeFalse();
     }

@@ -2,6 +2,7 @@ using FluentAssertions;
 using Ledger.Application.Abstractions;
 using Ledger.Application.Commands.Append;
 using Ledger.Application.Commands.Archive;
+using Ledger.Application.Common;
 using Ledger.Application.Interfaces;
 using Ledger.Application.Queries.GetEvents;
 using Ledger.Domain.Aggregates;
@@ -28,17 +29,26 @@ public class GetLedgerEventsQueryHandlerTest : IntegrationTestBase
         var signatureHelper = scope.ServiceProvider.GetRequiredService<ISignatureHelper>();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-        _sut = new GetLedgerEventsQueryHandler(repository);
+        _sut = new GetLedgerEventsQueryHandler(repository, signatureHelper);
         _append = new AppendLedgerEventCommandHandler(repository, signatureHelper, unitOfWork);
         _archive = new ArchiveLedgerCommandHandler(repository, signatureHelper, unitOfWork);
     }
 
-    private static GetLedgerEventsQuery Query(Guid ledgerId, int fromVersion = 1, int limit = 500) => new()
+    private GetLedgerEventsQuery Query(Guid ledgerId, int fromVersion = 1, int limit = 500, Key? reader = null, long? timestamp = null)
     {
-        LedgerId = ledgerId,
-        FromVersion = fromVersion,
-        Limit = limit,
-    };
+        var key = reader ?? _creator;
+        var signedAt = timestamp ?? LedgerSigner.Now();
+
+        return new GetLedgerEventsQuery
+        {
+            LedgerId = ledgerId,
+            FromVersion = fromVersion,
+            Limit = limit,
+            WriteKeyPublic = LedgerSigner.PublicKeyOf(key),
+            Timestamp = signedAt,
+            Signature = LedgerSigner.SignRead(key, ledgerId, signedAt),
+        };
+    }
 
     private async Task<LedgerStream> AppendAsync(LedgerStream ledger, byte[] payload, List<byte[]>? keysAdded = null)
     {
@@ -166,5 +176,87 @@ public class GetLedgerEventsQueryHandlerTest : IntegrationTestBase
         result.Success.Should().BeTrue();
         result.RequiredValue.Archived.Should().BeTrue();
         result.RequiredValue.Events.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Handle_Given_Unsigned_Read_Should_Return_Same_Error_As_Unknown_Ledger()
+    {
+        // Arrange
+        var ledger = await LedgerFactory.SeedAsync(Db, _creator);
+        var query = Query(ledger.Id) with { WriteKeyPublic = [], Timestamp = 0, Signature = [] };
+
+        // Act
+        var result = await _sut.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Error.Should().BeEquivalentTo(Error.NotFound<LedgerStream>(ledger.Id.ToString()));
+    }
+
+    [Fact]
+    public async Task Handle_Given_Key_Not_In_Ledger_Should_Return_NotFound()
+    {
+        // Arrange
+        var ledger = await LedgerFactory.SeedAsync(Db, _creator);
+
+        // Act
+        var result = await _sut.Handle(Query(ledger.Id, reader: LedgerSigner.NewKey()), CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Error.Should().BeEquivalentTo(Error.NotFound<LedgerStream>(ledger.Id.ToString()));
+    }
+
+    [Fact]
+    public async Task Handle_Given_Stale_Timestamp_Should_Return_NotFound()
+    {
+        // Arrange
+        var ledger = await LedgerFactory.SeedAsync(Db, _creator);
+        var stale = LedgerSigner.Now() - LedgerQueryLimits.ReadSignatureMaxAgeSeconds - 1;
+
+        // Act
+        var result = await _sut.Handle(Query(ledger.Id, timestamp: stale), CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Error!.Type.Should().Be(ErrorType.NotFound);
+    }
+
+    [Fact]
+    public async Task Handle_Given_Signature_For_Another_Ledger_Should_Return_NotFound()
+    {
+        // Arrange
+        var ledger = await LedgerFactory.SeedAsync(Db, _creator);
+        var now = LedgerSigner.Now();
+        var query = Query(ledger.Id) with { Timestamp = now, Signature = LedgerSigner.SignRead(_creator, Guid.NewGuid(), now) };
+
+        // Act
+        var result = await _sut.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Error!.Type.Should().Be(ErrorType.NotFound);
+    }
+
+    [Fact]
+    public async Task Handle_Given_Removed_Key_Should_Return_NotFound_While_Remaining_Member_Can_Read()
+    {
+        // Arrange
+        var member = LedgerSigner.NewKey();
+        var ledger = await LedgerFactory.SeedAsync(Db, _creator);
+        ledger = await AppendAsync(ledger, [4, 5, 6], [LedgerSigner.PublicKeyOf(member)]);
+
+        var removal = (LedgerCommands.Append(ledger, [7, 8, 9]) with { KeysRemoved = [LedgerSigner.PublicKeyOf(member)] }).SignedBy(_creator);
+        (await _append.Handle(removal, CancellationToken.None)).Success.Should().BeTrue();
+
+        // Act
+        var removed = await _sut.Handle(Query(ledger.Id, reader: member), CancellationToken.None);
+        var remaining = await _sut.Handle(Query(ledger.Id), CancellationToken.None);
+
+        // Assert
+        removed.Success.Should().BeFalse();
+        removed.Error!.Type.Should().Be(ErrorType.NotFound);
+        remaining.Success.Should().BeTrue();
+        remaining.RequiredValue.Version.Should().Be(3);
     }
 }

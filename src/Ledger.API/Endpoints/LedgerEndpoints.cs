@@ -12,6 +12,10 @@ using Ledger.Application.Dto;
 
 internal sealed class LedgerEndpoints : IEndpoint
 {
+    private const string LedgerKeyHeader = "X-Ledger-Key";
+    private const string LedgerTimestampHeader = "X-Ledger-Timestamp";
+    private const string LedgerSignatureHeader = "X-Ledger-Signature";
+
     public void MapRoutes(IEndpointRouteBuilder routeBuilder)
     {
         var group = routeBuilder.MapGroup("/api/ledger")
@@ -73,13 +77,25 @@ internal sealed class LedgerEndpoints : IEndpoint
         .ProducesProblem(StatusCodes.Status409Conflict)
         .ProducesProblem(StatusCodes.Status403Forbidden);
 
-        group.MapGet("/streams/{id:guid}/events", async ([FromRoute] Guid id, [FromQuery] int? fromVersion, [FromQuery] int? limit, ISender sender, HttpContext ctx, CancellationToken ct) =>
+        group.MapGet("/streams/{id:guid}/events", async (
+            [FromRoute] Guid id,
+            [FromQuery] int? fromVersion,
+            [FromQuery] int? limit,
+            [FromHeader(Name = LedgerKeyHeader)] string? key,
+            [FromHeader(Name = LedgerTimestampHeader)] string? timestamp,
+            [FromHeader(Name = LedgerSignatureHeader)] string? signature,
+            ISender sender,
+            HttpContext ctx,
+            CancellationToken ct) =>
         {
             var result = await sender.Send(new GetLedgerEventsQuery
             {
                 LedgerId = id,
                 FromVersion = fromVersion ?? 1,
-                Limit = limit ?? LedgerQueryLimits.MaxEventsPerRead
+                Limit = limit ?? LedgerQueryLimits.MaxEventsPerRead,
+                WriteKeyPublic = DecodeBase64(key),
+                Timestamp = ParseTimestamp(timestamp),
+                Signature = DecodeBase64(signature)
             }, ct);
 
             return result.Success ? Results.Ok(result.Value) : result.ToProblemDetails();
@@ -87,13 +103,36 @@ internal sealed class LedgerEndpoints : IEndpoint
         .Produces<LedgerEventDto>(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapGet("/streams/{id:guid}/head", async ([FromRoute] Guid id, ISender sender, CancellationToken ct) =>
+        group.MapGet("/streams/{id:guid}/head", async (
+            [FromRoute] Guid id,
+            [FromHeader(Name = LedgerKeyHeader)] string? key,
+            [FromHeader(Name = LedgerTimestampHeader)] string? timestamp,
+            [FromHeader(Name = LedgerSignatureHeader)] string? signature,
+            ISender sender,
+            CancellationToken ct) =>
         {
-            var result = await sender.Send(new GetLedgerHeadQuery { LedgerId = id }, ct);
+            var result = await sender.Send(new GetLedgerHeadQuery
+            {
+                LedgerId = id,
+                WriteKeyPublic = DecodeBase64(key),
+                Timestamp = ParseTimestamp(timestamp),
+                Signature = DecodeBase64(signature)
+            }, ct);
 
             return result.Success ? Results.Ok(result.Value) : result.ToProblemDetails();
         })
         .Produces<LedgerHeadDto>(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status404NotFound);
     }
+
+    private static byte[] DecodeBase64(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return [];
+
+        var buffer = new byte[value.Length];
+        return Convert.TryFromBase64String(value, buffer, out var written) ? buffer[..written] : [];
+    }
+
+    private static long ParseTimestamp(string? value) => long.TryParse(value, out var timestamp) ? timestamp : 0;
 }
