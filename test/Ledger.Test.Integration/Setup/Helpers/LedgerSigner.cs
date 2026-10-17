@@ -36,6 +36,21 @@ public static class LedgerSigner
         IReadOnlyCollection<byte[]>? keysRemoved = null) =>
         SHA256.HashData(SigningInput(ledgerId, version, previousHash, payload, keysAdded ?? [], keysRemoved ?? []));
 
+    public static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+    public static byte[] SignRead(Key key, Guid ledgerId, long timestamp)
+    {
+        var timestampBytes = new byte[8];
+        BinaryPrimitives.WriteInt64BigEndian(timestampBytes, timestamp);
+
+        using var input = new MemoryStream();
+        input.Write("ledger-read-v1"u8);
+        input.Write(ledgerId.ToByteArray(bigEndian: true));
+        input.Write(timestampBytes);
+
+        return Algorithm.Sign(key, input.ToArray());
+    }
+
     private static byte[] SigningInput(
         Guid ledgerId,
         int version,

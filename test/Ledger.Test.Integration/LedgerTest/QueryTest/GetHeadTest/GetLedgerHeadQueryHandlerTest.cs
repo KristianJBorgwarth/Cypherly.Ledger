@@ -4,6 +4,7 @@ using Ledger.Application.Commands.Append;
 using Ledger.Application.Commands.Archive;
 using Ledger.Application.Interfaces;
 using Ledger.Application.Queries.GetHead;
+using Ledger.Domain.Aggregates;
 using Ledger.Domain.Common;
 using Ledger.Infrastructure.Persistence.Context;
 using Ledger.Test.Integration.Setup;
@@ -27,15 +28,29 @@ public class GetLedgerHeadQueryHandlerTest : IntegrationTestBase
         var signatureHelper = scope.ServiceProvider.GetRequiredService<ISignatureHelper>();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-        _sut = new GetLedgerHeadQueryHandler(repository);
+        _sut = new GetLedgerHeadQueryHandler(repository, signatureHelper);
         _append = new AppendLedgerEventCommandHandler(repository, signatureHelper, unitOfWork);
         _archive = new ArchiveLedgerCommandHandler(repository, signatureHelper, unitOfWork);
+    }
+
+    private GetLedgerHeadQuery Query(Guid ledgerId, Key? reader = null, long? timestamp = null)
+    {
+        var key = reader ?? _creator;
+        var signedAt = timestamp ?? LedgerSigner.Now();
+
+        return new GetLedgerHeadQuery
+        {
+            LedgerId = ledgerId,
+            WriteKeyPublic = LedgerSigner.PublicKeyOf(key),
+            Timestamp = signedAt,
+            Signature = LedgerSigner.SignRead(key, ledgerId, signedAt),
+        };
     }
 
     [Fact]
     public async Task Handle_Given_Unknown_Ledger_Should_Return_NotFound()
     {
-        var result = await _sut.Handle(new GetLedgerHeadQuery { LedgerId = Guid.NewGuid() }, CancellationToken.None);
+        var result = await _sut.Handle(Query(Guid.NewGuid()), CancellationToken.None);
 
         result.Success.Should().BeFalse();
         result.Error!.Type.Should().Be(ErrorType.NotFound);
@@ -48,7 +63,7 @@ public class GetLedgerHeadQueryHandlerTest : IntegrationTestBase
         var ledger = await LedgerFactory.SeedAsync(Db, _creator);
 
         // Act
-        var result = await _sut.Handle(new GetLedgerHeadQuery { LedgerId = ledger.Id }, CancellationToken.None);
+        var result = await _sut.Handle(Query(ledger.Id), CancellationToken.None);
 
         // Assert
         var head = result.RequiredValue;
@@ -66,7 +81,7 @@ public class GetLedgerHeadQueryHandlerTest : IntegrationTestBase
         await _append.Handle(LedgerCommands.Append(ledger, payload).SignedBy(_creator), CancellationToken.None);
 
         // Act
-        var result = await _sut.Handle(new GetLedgerHeadQuery { LedgerId = ledger.Id }, CancellationToken.None);
+        var result = await _sut.Handle(Query(ledger.Id), CancellationToken.None);
 
         // Assert
         var head = result.RequiredValue;
@@ -82,10 +97,39 @@ public class GetLedgerHeadQueryHandlerTest : IntegrationTestBase
         await _archive.Handle(LedgerCommands.Archive(ledger).SignedBy(_creator), CancellationToken.None);
 
         // Act
-        var result = await _sut.Handle(new GetLedgerHeadQuery { LedgerId = ledger.Id }, CancellationToken.None);
+        var result = await _sut.Handle(Query(ledger.Id), CancellationToken.None);
 
         // Assert
         result.RequiredValue.Archived.Should().BeTrue();
         result.RequiredValue.Version.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Handle_Given_Unsigned_Read_Should_Return_Same_Error_As_Unknown_Ledger()
+    {
+        // Arrange
+        var ledger = await LedgerFactory.SeedAsync(Db, _creator);
+        var query = Query(ledger.Id) with { WriteKeyPublic = [], Timestamp = 0, Signature = [] };
+
+        // Act
+        var result = await _sut.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Error.Should().BeEquivalentTo(Error.NotFound<LedgerStream>(ledger.Id.ToString()));
+    }
+
+    [Fact]
+    public async Task Handle_Given_Key_Not_In_Ledger_Should_Return_NotFound()
+    {
+        // Arrange
+        var ledger = await LedgerFactory.SeedAsync(Db, _creator);
+
+        // Act
+        var result = await _sut.Handle(Query(ledger.Id, reader: LedgerSigner.NewKey()), CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Error.Should().BeEquivalentTo(Error.NotFound<LedgerStream>(ledger.Id.ToString()));
     }
 }
