@@ -38,7 +38,7 @@ public class IntegrationTestFactory<TProgram, TDbContext> : WebApplicationFactor
 
             #region Authentication
 
-            // The real scheme needs an identity server, so tests authenticate every request instead.
+            // The real scheme needs an identity server, so tests authenticate any request that carries an Authorization header.
             services.AddAuthentication(TestAuthHandler.Scheme)
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.Scheme, _ => { });
 
