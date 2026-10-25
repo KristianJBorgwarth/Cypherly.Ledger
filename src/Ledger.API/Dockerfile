@@ -7,11 +7,16 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+
+COPY nuget.config .
+RUN --mount=type=secret,id=nuget_token \
+    sed -i "s|%NUGET_TOKEN%|$(cat /run/secrets/nuget_token)|g" nuget.config
+
 COPY ["src/Ledger.API/Ledger.API.csproj", "src/Ledger.API/"]
 COPY ["src/Ledger.Application/Ledger.Application.csproj", "src/Ledger.Application/"]
 COPY ["src/Ledger.Domain/Ledger.Domain.csproj", "src/Ledger.Domain/"]
 COPY ["src/Ledger.Infrastructure/Ledger.Infrastructure.csproj", "src/Ledger.Infrastructure/"]
-RUN dotnet restore "src/Ledger.API/Ledger.API.csproj"
+RUN dotnet restore "src/Ledger.API/Ledger.API.csproj" --configfile nuget.config
 COPY . .
 WORKDIR "/src/src/Ledger.API"
 RUN dotnet build "./Ledger.API.csproj" -c $BUILD_CONFIGURATION -o /app/build

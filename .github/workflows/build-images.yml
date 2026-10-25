@@ -23,9 +23,13 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Create NuGet token file
+        run: echo "${{ secrets.NUGET_TOKEN }}" > nuget_token.txt
+
       - name: Build and Push Docker Image for Cypherly.Ledger.API
         run: |
           docker buildx build --platform linux/amd64 \
+            --secret id=nuget_token,src=nuget_token.txt \
             -t ${{ secrets.DOCKER_USERNAME }}/dev-cypherly-ledger-api:latest \
             -f src/Ledger.API/Dockerfile . \
             --push

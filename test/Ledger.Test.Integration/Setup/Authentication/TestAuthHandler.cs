@@ -16,7 +16,7 @@ public class TestAuthHandler(
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Request.Headers.ContainsKey("Authorization"))
+        if (!Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.Ordinal))
             return Task.FromResult(AuthenticateResult.NoResult());
 
         var claims = new[]

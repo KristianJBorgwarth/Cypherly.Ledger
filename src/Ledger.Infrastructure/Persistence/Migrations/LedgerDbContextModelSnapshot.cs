@@ -198,6 +198,28 @@ namespace Ledger.Infrastructure.Persistence.Migrations
                     b.ToTable("outbox_message", (string)null);
                 });
 
+            modelBuilder.Entity("PrivacyPass.EntityFrameworkCore.PostgreSQL.Entities.SpentToken", b =>
+                {
+                    b.Property<byte[]>("Nonce")
+                        .HasColumnType("bytea")
+                        .HasColumnName("nonce");
+
+                    b.Property<DateTime>("SpentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("spent_at");
+
+                    b.Property<byte[]>("TokenKeyId")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("token_key_id");
+
+                    b.HasKey("Nonce");
+
+                    b.HasIndex("TokenKeyId");
+
+                    b.ToTable("spent_token", (string)null);
+                });
+
             modelBuilder.Entity("Ledger.Domain.Entities.LedgerEvent", b =>
                 {
                     b.HasOne("Ledger.Domain.Aggregates.LedgerStream", null)

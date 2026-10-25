@@ -11,6 +11,7 @@
         <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.12" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+        <PackageReference Include="PrivacyPass.EntityFrameworkCore.PostgreSQL" Version="0.2.0" />
     </ItemGroup>
 
     <ItemGroup>
