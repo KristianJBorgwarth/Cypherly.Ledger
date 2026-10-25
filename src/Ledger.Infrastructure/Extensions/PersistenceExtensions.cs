@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using PrivacyPass.EntityFrameworkCore.PostgreSQL.Extensions;
 
 namespace Ledger.Infrastructure.Extensions;
 
@@ -39,5 +40,6 @@ internal static class PersistenceExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IOutboxRepository, OutboxRepository>();
         services.AddScoped<ILedgerRepository, LedgerRepository>();
+        services.AddSpentTokenStore<LedgerDbContext>();
     }
 }
