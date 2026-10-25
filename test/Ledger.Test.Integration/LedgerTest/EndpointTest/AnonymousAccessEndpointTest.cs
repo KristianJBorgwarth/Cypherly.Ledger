@@ -36,13 +36,13 @@ public class AnonymousAccessEndpointTest(IntegrationTestFactory<Program, LedgerD
     }
 
     [Fact]
-    public async Task Create_With_Authorization_Should_Return_Created()
+    public async Task Create_With_Jwt_Should_Return_Unauthorized()
     {
         // Act
         var response = await Client.SendAsync(Request(HttpMethod.Post, "/api/ledger/streams", CreateBody(), authenticated: true));
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]

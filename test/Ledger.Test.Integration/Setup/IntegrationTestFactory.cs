@@ -1,13 +1,10 @@
-using Ledger.Test.Integration.Setup.Authentication;
 using Ledger.Test.Integration.Setup.Helpers;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using PrivacyPass.AspNetCore.Authentication;
 using Testcontainers.PostgreSql;
 
 namespace Ledger.Test.Integration.Setup;
@@ -40,18 +37,6 @@ public class IntegrationTestFactory<TProgram, TDbContext> : WebApplicationFactor
 
             #endregion
 
-            #region Authentication
-
-            // The real scheme needs an identity server, so tests authenticate any request that carries a Bearer header.
-            services.AddAuthentication(TestAuthHandler.Scheme)
-                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.Scheme, _ => { });
-
-            services.AddAuthorizationBuilder()
-                .AddPolicy("create-stream", policy => policy
-                    .AddAuthenticationSchemes(TestAuthHandler.Scheme, PrivateTokenDefaults.AuthenticationScheme)
-                    .RequireAuthenticatedUser());
-
-            #endregion
         });
     }
 

@@ -1,5 +1,5 @@
 using Ledger.API.Common;
-using Ledger.API.Extensions;
+using PrivacyPass.AspNetCore.Extensions;
 using Ledger.API.Requests;
 using Ledger.Application.Commands.Append;
 using Ledger.Application.Commands.Archive;
@@ -36,7 +36,7 @@ internal sealed class LedgerEndpoints : IEndpoint
 
             return result.Success ? Results.Created($"/api/ledger/streams/{req.LedgerId}", null) : result.ToProblemDetails();
         })
-        .RequireAuthorization(AuthenticationExtensions.CreateStreamPolicy)
+        .RequirePrivateToken()
         .Produces(StatusCodes.Status201Created)
         .ProducesProblem(StatusCodes.Status401Unauthorized);
 
