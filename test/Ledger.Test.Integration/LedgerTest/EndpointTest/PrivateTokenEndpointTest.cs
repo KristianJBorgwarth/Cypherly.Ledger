@@ -89,12 +89,12 @@ public class PrivateTokenEndpointTest(IntegrationTestFactory<Program, LedgerDbCo
     }
 
     [Fact]
-    public async Task Create_Given_Jwt_Should_Still_Return_Created()
+    public async Task Create_Given_Jwt_Should_Return_Unauthorized()
     {
         // Act
         var response = await CreateAsync("Bearer test");
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }
