@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Ledger.Application.Commands.Append;
 using Ledger.Application.Common;
+using Ledger.Domain.Common;
 
 namespace Ledger.Test.Unit.ValidatorTest;
 
@@ -20,9 +21,7 @@ public class AppendLedgerEventCommandValidatorTest
         Payload = Bytes(0x04, payloadBytes),
         WriteKeyPublic = Bytes(0x01, 32),
         Signature = Bytes(0x02, 64),
-        KeysAdded = Keys(keysAdded),
-        InviteKeysAdded = Keys(inviteKeysAdded),
-        KeysRemoved = Keys(keysRemoved),
+        KeyChanges = new KeyChanges(Keys(keysAdded), Keys(inviteKeysAdded), Keys(keysRemoved)),
     };
 
     [Fact]
@@ -64,7 +63,7 @@ public class AppendLedgerEventCommandValidatorTest
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be(nameof(AppendLedgerEventCommand.KeysAdded));
+        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be("KeyChanges.Added");
     }
 
     [Fact]
@@ -75,7 +74,7 @@ public class AppendLedgerEventCommandValidatorTest
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be(nameof(AppendLedgerEventCommand.KeysRemoved));
+        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be("KeyChanges.Removed");
     }
 
     [Fact]
@@ -96,20 +95,20 @@ public class AppendLedgerEventCommandValidatorTest
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be(nameof(AppendLedgerEventCommand.InviteKeysAdded));
+        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be("KeyChanges.InvitesAdded");
     }
 
     [Fact]
     public void Validate_Given_Malformed_Invite_Key_Should_Be_Invalid()
     {
         // Arrange
-        var command = Command() with { InviteKeysAdded = [Bytes(0x10, 31)] };
+        var command = Command() with { KeyChanges = new KeyChanges([], [Bytes(0x10, 31)], []) };
 
         // Act
         var result = _sut.Validate(command);
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle().Which.PropertyName.Should().StartWith(nameof(AppendLedgerEventCommand.InviteKeysAdded));
+        result.Errors.Should().ContainSingle().Which.PropertyName.Should().StartWith("KeyChanges.InvitesAdded");
     }
 }

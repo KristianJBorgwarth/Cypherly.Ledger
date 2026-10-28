@@ -17,7 +17,6 @@ public sealed class CreateLedgerCommandHandler(
     public async ValueTask<Result> Handle(CreateLedgerCommand cmd, CancellationToken ct)
     {
         var existingLedger = await ledgerRepository.GetByIdAsync(cmd.LedgerId, ct);
-        var keyChanges = new KeyChanges([], cmd.InviteKeysAdded, []);
 
         if (signatureHelper.IsValidSignature(
                 ledgerId: cmd.LedgerId,
@@ -26,7 +25,7 @@ public sealed class CreateLedgerCommandHandler(
                 payload: cmd.Payload,
                 writeKeyPublic: cmd.WriteKey,
                 signature: cmd.Signature,
-                keyChanges: keyChanges) is false)
+                keyChanges: cmd.KeyChanges) is false)
             return Result.Fail(Error.Forbidden("Invalid signature."));
 
         if(existingLedger is not null)
@@ -37,7 +36,7 @@ public sealed class CreateLedgerCommandHandler(
             version: FirstVersion,
             previousHash: FirstPreviousHash,
             payload: cmd.Payload,
-            keyChanges: keyChanges);
+            keyChanges: cmd.KeyChanges);
 
         var ledgerResult = LedgerStream.Initialize(
             id: cmd.LedgerId,
@@ -45,7 +44,7 @@ public sealed class CreateLedgerCommandHandler(
             payload: cmd.Payload,
             eventhash: evtHash,
             signature: cmd.Signature,
-            inviteKeysAdded: cmd.InviteKeysAdded);
+            inviteKeysAdded: cmd.KeyChanges.InvitesAdded);
 
         if(ledgerResult.Success is false)
             return ledgerResult;

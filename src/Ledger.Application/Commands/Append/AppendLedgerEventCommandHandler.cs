@@ -20,7 +20,6 @@ public sealed class AppendLedgerEventCommandHandler(
             return Result.Fail(Error.NotFound<LedgerStream>(cmd.LedgerId.ToString()));
 
         var eventVersion = cmd.ExpectedVersion + 1;
-        var keyChanges = new KeyChanges(cmd.KeysAdded, cmd.InviteKeysAdded, cmd.KeysRemoved);
 
         if (signatureHelper.IsValidSignature(
                 ledgerId: cmd.LedgerId,
@@ -29,7 +28,7 @@ public sealed class AppendLedgerEventCommandHandler(
                 payload: cmd.Payload,
                 writeKeyPublic: cmd.WriteKeyPublic,
                 signature: cmd.Signature,
-                keyChanges: keyChanges) is false)
+                keyChanges: cmd.KeyChanges) is false)
             return Result.Fail(Error.Forbidden("Invalid signature."));
 
         var evtHash = signatureHelper.GenerateHash(
@@ -37,7 +36,7 @@ public sealed class AppendLedgerEventCommandHandler(
             version: eventVersion,
             previousHash: cmd.PreviousHash,
             payload: cmd.Payload,
-            keyChanges: keyChanges);
+            keyChanges: cmd.KeyChanges);
 
         var result = ledger.Append(
             expectedVersion: cmd.ExpectedVersion,
@@ -46,7 +45,7 @@ public sealed class AppendLedgerEventCommandHandler(
             payload: cmd.Payload,
             writeKeyPublic: cmd.WriteKeyPublic,
             signature: cmd.Signature,
-            keyChanges: keyChanges);
+            keyChanges: cmd.KeyChanges);
 
         if(result.Success is false)
             return result;

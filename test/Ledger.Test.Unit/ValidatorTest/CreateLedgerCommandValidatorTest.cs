@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Ledger.Application.Commands.Create;
 using Ledger.Application.Common;
+using Ledger.Domain.Common;
 
 namespace Ledger.Test.Unit.ValidatorTest;
 
@@ -16,7 +17,7 @@ public class CreateLedgerCommandValidatorTest
         Payload = [1, 2, 3],
         WriteKey = Bytes(0x01, 32),
         Signature = Bytes(0x02, 64),
-        InviteKeysAdded = [.. Enumerable.Range(0, keysAdded).Select(i => Bytes((byte)(0x10 + i), 32))],
+        KeyChanges = new KeyChanges([], [.. Enumerable.Range(0, keysAdded).Select(i => Bytes((byte)(0x10 + i), 32))], []),
     };
 
     [Theory]
@@ -41,21 +42,21 @@ public class CreateLedgerCommandValidatorTest
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be(nameof(CreateLedgerCommand.InviteKeysAdded));
+        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be("KeyChanges.InvitesAdded");
     }
 
     [Fact]
     public void Validate_Given_Malformed_Key_Added_Should_Be_Invalid()
     {
         // Arrange
-        var command = Command(3) with { InviteKeysAdded = [Bytes(0x10, 32), Bytes(0x11, 32), Bytes(0x12, 31)] };
+        var command = Command(3) with { KeyChanges = new KeyChanges([], [Bytes(0x10, 32), Bytes(0x11, 32), Bytes(0x12, 31)], []) };
 
         // Act
         var result = _sut.Validate(command);
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle().Which.PropertyName.Should().StartWith(nameof(CreateLedgerCommand.InviteKeysAdded));
+        result.Errors.Should().ContainSingle().Which.PropertyName.Should().StartWith("KeyChanges.InvitesAdded");
     }
 
     [Fact]
@@ -80,6 +81,34 @@ public class CreateLedgerCommandValidatorTest
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be(nameof(CreateLedgerCommand.InviteKeysAdded));
+        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be("KeyChanges.InvitesAdded");
+    }
+
+    [Fact]
+    public void Validate_Given_Writer_Keys_Added_Should_Be_Invalid()
+    {
+        // Arrange
+        var command = Command(2) with { KeyChanges = Command(2).KeyChanges with { Added = [Bytes(0x20, 32)] } };
+
+        // Act
+        var result = _sut.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be("KeyChanges.Added");
+    }
+
+    [Fact]
+    public void Validate_Given_Keys_Removed_Should_Be_Invalid()
+    {
+        // Arrange
+        var command = Command(2) with { KeyChanges = Command(2).KeyChanges with { Removed = [Bytes(0x20, 32)] } };
+
+        // Act
+        var result = _sut.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be("KeyChanges.Removed");
     }
 }

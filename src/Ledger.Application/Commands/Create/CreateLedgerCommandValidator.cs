@@ -13,8 +13,11 @@ public sealed class CreateLedgerCommandValidator : AbstractValidator<CreateLedge
         RuleFor(x => x.Payload).NotEmpty().Must(p => p.Length <= LedgerQueryLimits.MaxPayloadBytes);
         RuleFor(x => x.WriteKey).Must(k => k.Length == 32);
         RuleFor(x => x.Signature).Must(s => s.Length == 64);
-        RuleFor(x => x.InviteKeysAdded).NotNull().Must(k => k.Count >= MinKeysAdded && k.Count <= LedgerQueryLimits.MaxKeysPerEvent);
-        RuleForEach(x => x.InviteKeysAdded).Must(k => k.Length == 32);
+        RuleFor(x => x.KeyChanges).NotNull();
+        RuleFor(x => x.KeyChanges.InvitesAdded).NotNull().Must(k => k.Count >= MinKeysAdded && k.Count <= LedgerQueryLimits.MaxKeysPerEvent);
+        RuleForEach(x => x.KeyChanges.InvitesAdded).Must(k => k.Length == 32);
+        RuleFor(x => x.KeyChanges.Added).Empty();
+        RuleFor(x => x.KeyChanges.Removed).Empty();
     }
 }
 

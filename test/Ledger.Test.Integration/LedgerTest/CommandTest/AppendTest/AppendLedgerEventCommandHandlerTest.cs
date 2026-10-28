@@ -145,7 +145,7 @@ public class AppendLedgerEventCommandHandlerTest : IntegrationTestBase
 
         var grantCommand = (LedgerCommands.Append(ledger) with
         {
-            KeysAdded = [LedgerSigner.PublicKeyOf(newMember)],
+            KeyChanges = new KeyChanges([LedgerSigner.PublicKeyOf(newMember)], [], []),
         }).SignedBy(_creator);
 
         // Act
@@ -168,7 +168,7 @@ public class AppendLedgerEventCommandHandlerTest : IntegrationTestBase
         var ledger = await LedgerFactory.SeedAsync(Db, _creator);
         var newMember = LedgerSigner.PublicKeyOf(LedgerSigner.NewKey());
 
-        var command = (LedgerCommands.Append(ledger) with { KeysAdded = [newMember] }).SignedBy(_creator);
+        var command = (LedgerCommands.Append(ledger) with { KeyChanges = new KeyChanges([newMember], [], []) }).SignedBy(_creator);
 
         // Act
         var result = await _sut.Handle(command, CancellationToken.None);
@@ -190,7 +190,7 @@ public class AppendLedgerEventCommandHandlerTest : IntegrationTestBase
 
         await _sut.Handle((LedgerCommands.Append(ledger) with
         {
-            KeysAdded = [LedgerSigner.PublicKeyOf(newMember)],
+            KeyChanges = new KeyChanges([LedgerSigner.PublicKeyOf(newMember)], [], []),
         }).SignedBy(_creator), CancellationToken.None);
 
         var afterGrant = await LedgerFactory.ReloadAsync(Db, ledger.Id);
@@ -198,7 +198,7 @@ public class AppendLedgerEventCommandHandlerTest : IntegrationTestBase
         // Act
         await _sut.Handle((LedgerCommands.Append(afterGrant, [8, 8, 8]) with
         {
-            KeysRemoved = [LedgerSigner.PublicKeyOf(newMember)],
+            KeyChanges = new KeyChanges([], [], [LedgerSigner.PublicKeyOf(newMember)]),
         }).SignedBy(_creator), CancellationToken.None);
 
         var afterRevoke = await LedgerFactory.ReloadAsync(Db, ledger.Id);
@@ -220,8 +220,7 @@ public class AppendLedgerEventCommandHandlerTest : IntegrationTestBase
 
         var swap = (LedgerCommands.Append(ledger) with
         {
-            KeysAdded = [own],
-            KeysRemoved = [LedgerSigner.PublicKeyOf(invite)],
+            KeyChanges = new KeyChanges([own], [], [LedgerSigner.PublicKeyOf(invite)]),
         }).SignedBy(invite);
 
         // Act
@@ -257,7 +256,7 @@ public class AppendLedgerEventCommandHandlerTest : IntegrationTestBase
         // Arrange
         var ledger = await LedgerFactory.SeedAsync(Db, _creator);
         var invite = LedgerSigner.PublicKeyOf(LedgerSigner.NewKey());
-        var command = (LedgerCommands.Append(ledger) with { InviteKeysAdded = [invite] }).SignedBy(_creator);
+        var command = (LedgerCommands.Append(ledger) with { KeyChanges = new KeyChanges([], [invite], []) }).SignedBy(_creator);
 
         // Act
         var result = await _sut.Handle(command, CancellationToken.None);
@@ -281,11 +280,14 @@ public class AppendLedgerEventCommandHandlerTest : IntegrationTestBase
         var ledger = await LedgerFactory.SeedAsync(Db, _creator);
         var signed = (LedgerCommands.Append(ledger) with
         {
-            InviteKeysAdded = [LedgerSigner.PublicKeyOf(LedgerSigner.NewKey())],
+            KeyChanges = new KeyChanges([], [LedgerSigner.PublicKeyOf(LedgerSigner.NewKey())], []),
         }).SignedBy(_creator);
         var tampered = signed with
         {
-            InviteKeysAdded = [.. signed.InviteKeysAdded, LedgerSigner.PublicKeyOf(LedgerSigner.NewKey())],
+            KeyChanges = signed.KeyChanges with
+            {
+                InvitesAdded = [.. signed.KeyChanges.InvitesAdded, LedgerSigner.PublicKeyOf(LedgerSigner.NewKey())],
+            },
         };
 
         // Act

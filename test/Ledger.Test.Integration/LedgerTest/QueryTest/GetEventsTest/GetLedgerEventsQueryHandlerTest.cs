@@ -52,7 +52,7 @@ public class GetLedgerEventsQueryHandlerTest : IntegrationTestBase
 
     private async Task<LedgerStream> AppendAsync(LedgerStream ledger, byte[] payload, List<byte[]>? keysAdded = null)
     {
-        var command = (LedgerCommands.Append(ledger, payload) with { KeysAdded = keysAdded ?? [] }).SignedBy(_creator);
+        var command = (LedgerCommands.Append(ledger, payload) with { KeyChanges = new KeyChanges(keysAdded ?? [], [], []) }).SignedBy(_creator);
         var result = await _append.Handle(command, CancellationToken.None);
         result.Success.Should().BeTrue();
 
@@ -103,8 +103,8 @@ public class GetLedgerEventsQueryHandlerTest : IntegrationTestBase
 
         // Assert
         var granted = result.RequiredValue.Events.Single(e => e.Version == 2);
-        granted.KeysAdded.Should().ContainSingle().Which.Should().Equal(newMember);
-        granted.KeysRemoved.Should().BeEmpty();
+        granted.KeyChanges.Added.Should().ContainSingle().Which.Should().Equal(newMember);
+        granted.KeyChanges.Removed.Should().BeEmpty();
         granted.PreviousHash.Should().Equal(ledger.Hash);
         granted.WriteKeyPublic.Should().Equal(LedgerSigner.PublicKeyOf(_creator));
         granted.Signature.Should().Equal(
@@ -246,7 +246,7 @@ public class GetLedgerEventsQueryHandlerTest : IntegrationTestBase
         var ledger = await LedgerFactory.SeedAsync(Db, _creator);
         ledger = await AppendAsync(ledger, [4, 5, 6], [LedgerSigner.PublicKeyOf(member)]);
 
-        var removal = (LedgerCommands.Append(ledger, [7, 8, 9]) with { KeysRemoved = [LedgerSigner.PublicKeyOf(member)] }).SignedBy(_creator);
+        var removal = (LedgerCommands.Append(ledger, [7, 8, 9]) with { KeyChanges = new KeyChanges([], [], [LedgerSigner.PublicKeyOf(member)]) }).SignedBy(_creator);
         (await _append.Handle(removal, CancellationToken.None)).Success.Should().BeTrue();
 
         // Act
@@ -273,7 +273,7 @@ public class GetLedgerEventsQueryHandlerTest : IntegrationTestBase
         // Assert
         result.Success.Should().BeTrue();
         var genesis = result.RequiredValue.Events.Single();
-        genesis.InviteKeysAdded.Should().ContainSingle().Which.Should().Equal(LedgerSigner.PublicKeyOf(invite));
-        genesis.KeysAdded.Should().BeEmpty();
+        genesis.KeyChanges.InvitesAdded.Should().ContainSingle().Which.Should().Equal(LedgerSigner.PublicKeyOf(invite));
+        genesis.KeyChanges.Added.Should().BeEmpty();
     }
 }
