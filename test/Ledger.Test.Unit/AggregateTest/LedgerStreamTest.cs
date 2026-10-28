@@ -31,9 +31,7 @@ public class LedgerStreamTest
             [1, 2, 3],
             writeKey,
             Bytes(0x00, 64),
-            added ?? [],
-            invites ?? [],
-            removed ?? []);
+            new KeyChanges(added ?? [], invites ?? [], removed ?? []));
     }
 
     private static Result<LedgerEvent> Archive(
@@ -290,9 +288,10 @@ public class LedgerStreamTest
             payload: input == "emptyPayload" ? [] : [1, 2, 3],
             writeKeyPublic: input == "shortWriteKey" ? CreatorKey[..31] : CreatorKey,
             signature: input == "shortSignature" ? Bytes(0x00, 63) : Bytes(0x00, 64),
-            keysAdded: input == "shortAddedKey" ? [OtherKey, Bytes(0xD4, 31)] : [],
-            inviteKeysAdded: input == "shortInviteKey" ? [Bytes(0xD4, 31)] : [],
-            keysRemoved: input == "shortRemovedKey" ? [Bytes(0xD4, 31)] : []);
+            keyChanges: new KeyChanges(
+                input == "shortAddedKey" ? [OtherKey, Bytes(0xD4, 31)] : [],
+                input == "shortInviteKey" ? [Bytes(0xD4, 31)] : [],
+                input == "shortRemovedKey" ? [Bytes(0xD4, 31)] : []));
 
         act.Should().Throw<ArgumentException>();
         ShouldBeUnchanged(ledger, 0, new byte[32], 0, CreatorKey);

@@ -1,4 +1,5 @@
 using Ledger.Domain.Abstractions;
+using Ledger.Domain.Common;
 
 namespace Ledger.Domain.Entities;
 
@@ -24,9 +25,7 @@ public sealed class LedgerEvent : Entity
         byte[] previousHash, 
         byte[] writeKeyPublic, 
         byte[] signature,
-        IEnumerable<byte[]> keysAdded,
-        IEnumerable<byte[]> inviteKeysAdded,
-        IEnumerable<byte[]> keysRemoved) : base(Guid.NewGuid())
+        KeyChanges keyChanges) : base(Guid.NewGuid())
     {
         StreamId = streamId;
         Version = version;
@@ -34,8 +33,8 @@ public sealed class LedgerEvent : Entity
         PreviousHash = previousHash;
         WriteKeyPublic = writeKeyPublic;
         Signature = signature;
-        KeysAdded = [.. keysAdded];
-        InviteKeysAdded = [.. inviteKeysAdded];
-        KeysRemoved = [.. keysRemoved];
+        KeysAdded = [.. keyChanges.Added];
+        InviteKeysAdded = [.. keyChanges.InvitesAdded];
+        KeysRemoved = [.. keyChanges.Removed];
     }
 }
