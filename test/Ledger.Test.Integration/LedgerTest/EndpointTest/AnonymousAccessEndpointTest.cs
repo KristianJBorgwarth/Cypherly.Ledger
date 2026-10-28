@@ -22,7 +22,7 @@ public class AnonymousAccessEndpointTest(IntegrationTestFactory<Program, LedgerD
     private object CreateBody()
     {
         var cmd = LedgerCommands.Create(Guid.NewGuid()).SignedBy(_creator);
-        return new { cmd.LedgerId, cmd.Payload, cmd.WriteKey, cmd.Signature, cmd.KeysAdded };
+        return new { cmd.LedgerId, cmd.Payload, cmd.WriteKey, cmd.Signature, cmd.InviteKeysAdded };
     }
 
     [Fact]

@@ -28,7 +28,8 @@ internal sealed class SignatureHelper : ISignatureHelper
         byte[] writeKeyPublic,
         byte[] signature,
         IReadOnlyCollection<byte[]> keysAdded,
-        IReadOnlyCollection<byte[]> keysRemoved)
+        IReadOnlyCollection<byte[]> keysRemoved,
+        IReadOnlyCollection<byte[]> inviteKeysAdded)
     {
         var algorithm = SignatureAlgorithm.Ed25519;
 

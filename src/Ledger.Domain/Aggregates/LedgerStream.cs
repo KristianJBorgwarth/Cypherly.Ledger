@@ -25,7 +25,7 @@ public sealed class LedgerStream : AggregateRoot
 
     public LedgerStream(Guid id, byte[] createWriteKey) : base(id)
     {
-        _writeKeys.Add(new LedgerWriteKey(id, createWriteKey));
+        _writeKeys.Add(new LedgerWriteKey(id, createWriteKey, WriteKeyRole.Owner));
     }
 
     public bool HasWriteKey(byte[] publicKey) => _writeKeys.Any(wk => wk.PublicKey.SequenceEqual(publicKey));
@@ -38,6 +38,7 @@ public sealed class LedgerStream : AggregateRoot
             byte[] writeKeyPublic,
             byte[] signature,
             IReadOnlyCollection<byte[]> keysAdded,
+            IReadOnlyCollection<byte[]> inviteKeysAdded,
             IReadOnlyCollection<byte[]> keysRemoved)
     {
         if (payload.Length == 0
@@ -62,7 +63,7 @@ public sealed class LedgerStream : AggregateRoot
         if (remaining == 0)
             return Result.Fail<LedgerEvent>(Error.Validation("Append would leave the ledger without write keys."));
 
-        var evt = new LedgerEvent(Id, Version + 1, payload, previousHash, writeKeyPublic, signature, keysAdded, keysRemoved);
+        var evt = new LedgerEvent(Id, Version + 1, payload, previousHash, writeKeyPublic, signature, keysAdded, keysRemoved, inviteKeysAdded);
 
         _events.Add(evt);
 
@@ -70,7 +71,7 @@ public sealed class LedgerStream : AggregateRoot
             _writeKeys.RemoveAll(k => k.PublicKey.AsSpan().SequenceEqual(key));
 
         foreach (var key in keysAdded.Where(k => !HasWriteKey(k)))
-            _writeKeys.Add(new LedgerWriteKey(Id, key));
+            _writeKeys.Add(new LedgerWriteKey(Id, key, WriteKeyRole.Writer));
 
         Version = evt.Version;
         Hash = eventHash;
@@ -84,7 +85,7 @@ public sealed class LedgerStream : AggregateRoot
         byte[] payload,
         byte[] eventhash,
         byte[] signature,
-        IReadOnlyCollection<byte[]> keysAdded)
+        IReadOnlyCollection<byte[]> invitesAdded)
     {
         var ledger = new LedgerStream(id, creatorWriteKey);
 
@@ -95,8 +96,9 @@ public sealed class LedgerStream : AggregateRoot
             payload: payload,
             writeKeyPublic: creatorWriteKey,
             signature: signature,
-            keysAdded: keysAdded,
-            keysRemoved: []);
+            keysAdded: [],
+            keysRemoved: [],
+            inviteKeysAdded: invitesAdded);
 
         return append.Success ? ledger : Result.Fail<LedgerStream>(append.Error);
     }
@@ -117,7 +119,8 @@ public sealed class LedgerStream : AggregateRoot
             writeKeyPublic: writeKeyPublic,
             signature: signature,
             keysAdded: [],
-            keysRemoved: []);
+            keysRemoved: [],
+            inviteKeysAdded: []);
 
         if (append.Success is false)
             return append;
@@ -126,4 +129,14 @@ public sealed class LedgerStream : AggregateRoot
 
         return append;
     }
+
+    private static bool IsSelfSwap(
+        byte[] signer,
+        IReadOnlyCollection<byte[]> keysAdded,
+        IReadOnlyCollection<byte[]> invitesAdded,
+        IReadOnlyCollection<byte[]> keysRemoved) =>
+        invitesAdded.Count == 0
+        && keysAdded.Count == 1
+        && keysRemoved.Count == 1
+        && keysRemoved.First().AsSpan().SequenceEqual(signer);
 }

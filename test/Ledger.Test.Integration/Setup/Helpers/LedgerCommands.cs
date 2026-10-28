@@ -14,7 +14,7 @@ public static class LedgerCommands
         Payload = payload ?? [1, 2, 3],
         WriteKey = [],
         Signature = [],
-        KeysAdded = [.. Enumerable.Range(0, 3).Select(_ => LedgerSigner.PublicKeyOf(LedgerSigner.NewKey()))],
+        InviteKeysAdded = [.. Enumerable.Range(0, 3).Select(_ => LedgerSigner.PublicKeyOf(LedgerSigner.NewKey()))],
     };
 
     public static AppendLedgerEventCommand Append(LedgerStream ledger, byte[]? payload = null) => new()
@@ -48,7 +48,7 @@ public static class LedgerCommands
     public static CreateLedgerCommand SignedBy(this CreateLedgerCommand cmd, Key key) => cmd with
     {
         WriteKey = LedgerSigner.PublicKeyOf(key),
-        Signature = LedgerSigner.Sign(key, cmd.LedgerId, LedgerFactory.GenesisVersion, LedgerFactory.GenesisHash, cmd.Payload, cmd.KeysAdded),
+        Signature = LedgerSigner.Sign(key, cmd.LedgerId, LedgerFactory.GenesisVersion, LedgerFactory.GenesisHash, cmd.Payload, cmd.InviteKeysAdded),
     };
 
     public static AppendLedgerEventCommand SignedBy(this AppendLedgerEventCommand cmd, Key key) => cmd with

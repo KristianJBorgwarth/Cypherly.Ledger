@@ -12,6 +12,7 @@ public sealed class LedgerEvent : Entity
     public byte[] WriteKeyPublic { get; private set; }
     public byte[] Signature { get; private set; }
     public List<byte[]> KeysAdded { get; private set; } = [];
+    public List<byte[]> InviteKeysAdded { get; private set; } = [];
     public List<byte[]> KeysRemoved { get; private set; } = [];
 
     private LedgerEvent(Guid id) : base(id) { } // For EF Core
@@ -24,7 +25,9 @@ public sealed class LedgerEvent : Entity
         byte[] writeKeyPublic, 
         byte[] signature,
         IEnumerable<byte[]> keysAdded,
-        IEnumerable<byte[]> keysRemoved) : base(Guid.NewGuid())
+        IEnumerable<byte[]> keysRemoved,
+        IEnumerable<byte[]> inviteKeysAdded) 
+        : base(Guid.NewGuid())
     {
         StreamId = streamId;
         Version = version;
@@ -34,5 +37,6 @@ public sealed class LedgerEvent : Entity
         Signature = signature;
         KeysAdded = [.. keysAdded];
         KeysRemoved = [.. keysRemoved];
+        InviteKeysAdded = [.. inviteKeysAdded];
     }
 }

@@ -31,7 +31,7 @@ internal sealed class LedgerEndpoints : IEndpoint
                 Payload = req.Payload,
                 WriteKey = req.WriteKey,
                 Signature = req.Signature,
-                KeysAdded = req.KeysAdded
+                InviteKeysAdded = req.KeysAdded
             }, ct);
 
             return result.Success ? Results.Created($"/api/ledger/streams/{req.LedgerId}", null) : result.ToProblemDetails();

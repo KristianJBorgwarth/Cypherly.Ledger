@@ -19,7 +19,7 @@ public class PrivateTokenEndpointTest(IntegrationTestFactory<Program, LedgerDbCo
         var cmd = LedgerCommands.Create(Guid.NewGuid()).SignedBy(_creator);
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/ledger/streams")
         {
-            Content = JsonContent.Create(new { cmd.LedgerId, cmd.Payload, cmd.WriteKey, cmd.Signature, cmd.KeysAdded }),
+            Content = JsonContent.Create(new { cmd.LedgerId, cmd.Payload, cmd.WriteKey, cmd.Signature, cmd.InviteKeysAdded }),
         };
 
         if (authorization is not null) request.Headers.TryAddWithoutValidation("Authorization", authorization);

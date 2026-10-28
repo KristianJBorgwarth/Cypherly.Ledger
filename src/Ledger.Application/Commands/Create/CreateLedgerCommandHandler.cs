@@ -25,8 +25,9 @@ public sealed class CreateLedgerCommandHandler(
                 payload: cmd.Payload,
                 writeKeyPublic: cmd.WriteKey,
                 signature: cmd.Signature,
-                keysAdded: cmd.KeysAdded,
-                keysRemoved: []) is false)
+                keysAdded: [],
+                keysRemoved: [],
+                inviteKeysAdded: cmd.InviteKeysAdded) is false)
             return Result.Fail(Error.Forbidden("Invalid signature."));
 
         if(existingLedger is not null)
@@ -37,7 +38,7 @@ public sealed class CreateLedgerCommandHandler(
             version: FirstVersion,
             previousHash: FirstPreviousHash,
             payload: cmd.Payload,
-            keysAdded: cmd.KeysAdded,
+            keysAdded: cmd.InviteKeysAdded,
             keysRemoved: []);
 
         var ledgerResult = LedgerStream.Initialize(
@@ -46,7 +47,7 @@ public sealed class CreateLedgerCommandHandler(
             payload: cmd.Payload,
             eventhash: evtHash,
             signature: cmd.Signature,
-            keysAdded: cmd.KeysAdded);
+            invitesAdded: cmd.InviteKeysAdded);
 
         if(ledgerResult.Success is false)
             return ledgerResult;

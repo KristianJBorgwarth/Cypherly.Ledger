@@ -16,7 +16,7 @@ public class CreateLedgerCommandValidatorTest
         Payload = [1, 2, 3],
         WriteKey = Bytes(0x01, 32),
         Signature = Bytes(0x02, 64),
-        KeysAdded = [.. Enumerable.Range(0, keysAdded).Select(i => Bytes((byte)(0x10 + i), 32))],
+        InviteKeysAdded = [.. Enumerable.Range(0, keysAdded).Select(i => Bytes((byte)(0x10 + i), 32))],
     };
 
     [Theory]
@@ -41,21 +41,21 @@ public class CreateLedgerCommandValidatorTest
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be(nameof(CreateLedgerCommand.KeysAdded));
+        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be(nameof(CreateLedgerCommand.InviteKeysAdded));
     }
 
     [Fact]
     public void Validate_Given_Malformed_Key_Added_Should_Be_Invalid()
     {
         // Arrange
-        var command = Command(3) with { KeysAdded = [Bytes(0x10, 32), Bytes(0x11, 32), Bytes(0x12, 31)] };
+        var command = Command(3) with { InviteKeysAdded = [Bytes(0x10, 32), Bytes(0x11, 32), Bytes(0x12, 31)] };
 
         // Act
         var result = _sut.Validate(command);
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle().Which.PropertyName.Should().StartWith(nameof(CreateLedgerCommand.KeysAdded));
+        result.Errors.Should().ContainSingle().Which.PropertyName.Should().StartWith(nameof(CreateLedgerCommand.InviteKeysAdded));
     }
 
     [Fact]
@@ -80,6 +80,6 @@ public class CreateLedgerCommandValidatorTest
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be(nameof(CreateLedgerCommand.KeysAdded));
+        result.Errors.Should().ContainSingle().Which.PropertyName.Should().Be(nameof(CreateLedgerCommand.InviteKeysAdded));
     }
 }
