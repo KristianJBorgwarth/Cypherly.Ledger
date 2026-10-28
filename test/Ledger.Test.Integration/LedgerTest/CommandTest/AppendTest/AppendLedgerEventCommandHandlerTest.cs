@@ -3,6 +3,7 @@ using Ledger.Application.Abstractions;
 using Ledger.Application.Commands.Append;
 using Ledger.Application.Interfaces;
 using Ledger.Domain.Common;
+using Ledger.Domain.Enums;
 using Ledger.Infrastructure.Persistence.Context;
 using Ledger.Test.Integration.Setup;
 using Ledger.Test.Integration.Setup.Helpers;
@@ -205,6 +206,92 @@ public class AppendLedgerEventCommandHandlerTest : IntegrationTestBase
 
         // Assert
         afterRevoke.WriteKeys.Should().ContainSingle();
+        result.Success.Should().BeFalse();
+        result.Error!.Type.Should().Be(ErrorType.Forbidden);
+    }
+
+    [Fact]
+    public async Task Handle_Given_Invite_Self_Swap_Should_Replace_The_Invite_With_A_Writer_Key()
+    {
+        // Arrange
+        var invite = LedgerSigner.NewKey();
+        var own = LedgerSigner.PublicKeyOf(LedgerSigner.NewKey());
+        var ledger = await LedgerFactory.SeedAsync(Db, _creator, inviteKeys: [LedgerSigner.PublicKeyOf(invite)]);
+
+        var swap = (LedgerCommands.Append(ledger) with
+        {
+            KeysAdded = [own],
+            KeysRemoved = [LedgerSigner.PublicKeyOf(invite)],
+        }).SignedBy(invite);
+
+        // Act
+        var result = await _sut.Handle(swap, CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeTrue();
+
+        var stored = await LedgerFactory.ReloadAsync(Db, ledger.Id);
+        stored.HasWriteKey(LedgerSigner.PublicKeyOf(invite)).Should().BeFalse();
+        stored.WriteKeys.Single(k => k.PublicKey.SequenceEqual(own)).Role.Should().Be(WriteKeyRole.Writer);
+    }
+
+    [Fact]
+    public async Task Handle_Given_Invite_Key_Plain_Append_Should_Return_Forbidden()
+    {
+        // Arrange
+        var invite = LedgerSigner.NewKey();
+        var ledger = await LedgerFactory.SeedAsync(Db, _creator, inviteKeys: [LedgerSigner.PublicKeyOf(invite)]);
+
+        // Act
+        var result = await _sut.Handle(LedgerCommands.Append(ledger).SignedBy(invite), CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Error!.Type.Should().Be(ErrorType.Forbidden);
+        Db.LedgerEvent.AsNoTracking().Where(e => e.StreamId == ledger.Id).Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Handle_Given_Invites_Persisted_On_The_Event_And_Stored_As_Invite_Keys()
+    {
+        // Arrange
+        var ledger = await LedgerFactory.SeedAsync(Db, _creator);
+        var invite = LedgerSigner.PublicKeyOf(LedgerSigner.NewKey());
+        var command = (LedgerCommands.Append(ledger) with { InviteKeysAdded = [invite] }).SignedBy(_creator);
+
+        // Act
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeTrue();
+
+        var stored = await Db.LedgerEvent.AsNoTracking().SingleAsync(e => e.StreamId == ledger.Id && e.Version == 2);
+        stored.InviteKeysAdded.Should().ContainSingle().Which.Should().Equal(invite);
+        stored.KeysAdded.Should().BeEmpty();
+
+        var reloaded = await LedgerFactory.ReloadAsync(Db, ledger.Id);
+        reloaded.WriteKeys.Single(k => k.PublicKey.SequenceEqual(invite)).Role.Should().Be(WriteKeyRole.Invite);
+        reloaded.Hash.Should().Equal(LedgerSigner.Hash(ledger.Id, 2, ledger.Hash, command.Payload, inviteKeysAdded: [invite]));
+    }
+
+    [Fact]
+    public async Task Handle_Given_Invites_Changed_After_Signing_Should_Return_Forbidden()
+    {
+        // Arrange
+        var ledger = await LedgerFactory.SeedAsync(Db, _creator);
+        var signed = (LedgerCommands.Append(ledger) with
+        {
+            InviteKeysAdded = [LedgerSigner.PublicKeyOf(LedgerSigner.NewKey())],
+        }).SignedBy(_creator);
+        var tampered = signed with
+        {
+            InviteKeysAdded = [.. signed.InviteKeysAdded, LedgerSigner.PublicKeyOf(LedgerSigner.NewKey())],
+        };
+
+        // Act
+        var result = await _sut.Handle(tampered, CancellationToken.None);
+
+        // Assert
         result.Success.Should().BeFalse();
         result.Error!.Type.Should().Be(ErrorType.Forbidden);
     }

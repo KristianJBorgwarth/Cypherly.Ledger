@@ -11,6 +11,7 @@ public interface ISignatureHelper
         byte[] previousHash, 
         byte[] payload,
         IReadOnlyCollection<byte[]> keysAdded,
+        IReadOnlyCollection<byte[]> inviteKeysAdded,
         IReadOnlyCollection<byte[]> keysRemoved);
 
     /// <summary>
@@ -24,8 +25,8 @@ public interface ISignatureHelper
         byte[] writeKeyPublic, 
         byte[] signature,
         IReadOnlyCollection<byte[]> keysAdded,
-        IReadOnlyCollection<byte[]> keysRemoved,
-        IReadOnlyCollection<byte[]> inviteKeysAdded);
+        IReadOnlyCollection<byte[]> inviteKeysAdded,
+        IReadOnlyCollection<byte[]> keysRemoved);
 
     public bool IsValidReadSignature(Guid ledgerId, long timestamp, byte[] writeKeyPublic, byte[] signature);
 }

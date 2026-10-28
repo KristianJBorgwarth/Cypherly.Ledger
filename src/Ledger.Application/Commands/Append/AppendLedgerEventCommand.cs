@@ -11,5 +11,6 @@ public sealed record AppendLedgerEventCommand : ICommand
     public required byte[] WriteKeyPublic { get; init; }
     public required byte[] Signature { get; init; }
     public required List<byte[]> KeysAdded { get; init; }
+    public required List<byte[]> InviteKeysAdded { get; init; }
     public required List<byte[]> KeysRemoved { get; init; }
 }

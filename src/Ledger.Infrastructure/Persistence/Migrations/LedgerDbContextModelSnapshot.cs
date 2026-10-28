@@ -75,6 +75,13 @@ namespace Ledger.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted");
 
+                    b.PrimitiveCollection<List<byte[]>>("InviteKeysAdded")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bytea[]")
+                        .HasColumnName("invite_keys_added")
+                        .HasDefaultValueSql("'{}'::bytea[]");
+
                     b.PrimitiveCollection<List<byte[]>>("KeysAdded")
                         .IsRequired()
                         .HasColumnType("bytea[]")
@@ -147,6 +154,10 @@ namespace Ledger.Infrastructure.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("bytea")
                         .HasColumnName("public_key");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("integer")
+                        .HasColumnName("role");
 
                     b.Property<Guid>("StreamId")
                         .HasColumnType("uuid")

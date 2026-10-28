@@ -259,4 +259,21 @@ public class GetLedgerEventsQueryHandlerTest : IntegrationTestBase
         remaining.Success.Should().BeTrue();
         remaining.RequiredValue.Version.Should().Be(3);
     }
+
+    [Fact]
+    public async Task Handle_Given_Invite_Key_Should_Read_And_See_Invites_On_Events()
+    {
+        // Arrange
+        var invite = LedgerSigner.NewKey();
+        var ledger = await LedgerFactory.SeedAsync(Db, _creator, inviteKeys: [LedgerSigner.PublicKeyOf(invite)]);
+
+        // Act
+        var result = await _sut.Handle(Query(ledger.Id, reader: invite), CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        var genesis = result.RequiredValue.Events.Single();
+        genesis.InviteKeysAdded.Should().ContainSingle().Which.Should().Equal(LedgerSigner.PublicKeyOf(invite));
+        genesis.KeysAdded.Should().BeEmpty();
+    }
 }

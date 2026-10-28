@@ -28,6 +28,7 @@ public sealed class ArchiveLedgerCommandHandler(
                 writeKeyPublic: cmd.WriteKeyPublic,
                 signature: cmd.Signature,
                 keysAdded: [],
+                inviteKeysAdded: [],
                 keysRemoved: []) is false)
             return Result.Fail(Error.Forbidden("Invalid signature."));
 
@@ -37,6 +38,7 @@ public sealed class ArchiveLedgerCommandHandler(
             previousHash: cmd.PreviousHash,
             payload: cmd.Payload,
             keysAdded: [],
+            inviteKeysAdded: [],
             keysRemoved: []);
 
         var archiveResult = ledger.Archive(

@@ -14,9 +14,10 @@ internal sealed class SignatureHelper : ISignatureHelper
         byte[] previousHash,
         byte[] payload,
         IReadOnlyCollection<byte[]> keysAdded,
+        IReadOnlyCollection<byte[]> inviteKeysAdded,
         IReadOnlyCollection<byte[]> keysRemoved)
     {
-        var signingInput = SigningInput(ledgerId, version, previousHash, payload, keysAdded, keysRemoved);
+        var signingInput = SigningInput(ledgerId, version, previousHash, payload, keysAdded, inviteKeysAdded, keysRemoved);
         return SHA256.HashData(signingInput);
     }
 
@@ -28,15 +29,15 @@ internal sealed class SignatureHelper : ISignatureHelper
         byte[] writeKeyPublic,
         byte[] signature,
         IReadOnlyCollection<byte[]> keysAdded,
-        IReadOnlyCollection<byte[]> keysRemoved,
-        IReadOnlyCollection<byte[]> inviteKeysAdded)
+        IReadOnlyCollection<byte[]> inviteKeysAdded,
+        IReadOnlyCollection<byte[]> keysRemoved)
     {
         var algorithm = SignatureAlgorithm.Ed25519;
 
         if (!PublicKey.TryImport(algorithm, writeKeyPublic, KeyBlobFormat.RawPublicKey, out var key))
             return false;
 
-        var signingInput = SigningInput(ledgerId, version, previousHash, payload, keysAdded, keysRemoved);
+        var signingInput = SigningInput(ledgerId, version, previousHash, payload, keysAdded, inviteKeysAdded, keysRemoved);
 
         return algorithm.Verify(key!, signingInput, signature);
     }
@@ -50,6 +51,7 @@ internal sealed class SignatureHelper : ISignatureHelper
         byte[] previousHash,
         byte[] payload,
         IReadOnlyCollection<byte[]> keysAdded,
+        IReadOnlyCollection<byte[]> inviteKeysAdded,
         IReadOnlyCollection<byte[]> keysRemoved)
     {
         using var input = new MemoryStream();
@@ -58,6 +60,7 @@ internal sealed class SignatureHelper : ISignatureHelper
         input.Write(BigEndian(version));
         input.Write(previousHash);
         WriteKeys(input, keysAdded);
+        WriteKeys(input, inviteKeysAdded);
         WriteKeys(input, keysRemoved);
         input.Write(payload);
 

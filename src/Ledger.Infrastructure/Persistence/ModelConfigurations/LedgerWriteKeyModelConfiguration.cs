@@ -26,6 +26,10 @@ public sealed class LedgerWriteKeyModelConfiguration : BaseModelConfiguration<Le
             .HasMaxLength(32)
             .IsRequired();
 
+        builder.Property(x => x.Role)
+            .HasColumnName("role")
+            .IsRequired();
+
         builder.HasIndex(x => new { x.StreamId, x.PublicKey })
             .IsUnique();
 

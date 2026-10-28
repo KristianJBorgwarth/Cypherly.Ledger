@@ -26,6 +26,7 @@ public static class LedgerCommands
         WriteKeyPublic = [],
         Signature = [],
         KeysAdded = [],
+        InviteKeysAdded = [],
         KeysRemoved = [],
     };
 
@@ -48,12 +49,12 @@ public static class LedgerCommands
     public static CreateLedgerCommand SignedBy(this CreateLedgerCommand cmd, Key key) => cmd with
     {
         WriteKey = LedgerSigner.PublicKeyOf(key),
-        Signature = LedgerSigner.Sign(key, cmd.LedgerId, LedgerFactory.GenesisVersion, LedgerFactory.GenesisHash, cmd.Payload, cmd.InviteKeysAdded),
+        Signature = LedgerSigner.Sign(key, cmd.LedgerId, LedgerFactory.GenesisVersion, LedgerFactory.GenesisHash, cmd.Payload, inviteKeysAdded: cmd.InviteKeysAdded),
     };
 
     public static AppendLedgerEventCommand SignedBy(this AppendLedgerEventCommand cmd, Key key) => cmd with
     {
         WriteKeyPublic = LedgerSigner.PublicKeyOf(key),
-        Signature = LedgerSigner.Sign(key, cmd.LedgerId, cmd.ExpectedVersion + 1, cmd.PreviousHash, cmd.Payload, cmd.KeysAdded, cmd.KeysRemoved),
+        Signature = LedgerSigner.Sign(key, cmd.LedgerId, cmd.ExpectedVersion + 1, cmd.PreviousHash, cmd.Payload, cmd.KeysAdded, cmd.KeysRemoved, cmd.InviteKeysAdded),
     };
 }

@@ -5,7 +5,7 @@ namespace Ledger.Application.Commands.Create;
 
 public sealed class CreateLedgerCommandValidator : AbstractValidator<CreateLedgerCommand>
 {
-    private const int MinKeysAdded = 3;
+    private const int MinKeysAdded = 2;
 
     public CreateLedgerCommandValidator()
     {

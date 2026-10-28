@@ -3,6 +3,7 @@ using Ledger.Application.Abstractions;
 using Ledger.Application.Commands.Create;
 using Ledger.Application.Interfaces;
 using Ledger.Domain.Common;
+using Ledger.Domain.Enums;
 using Ledger.Infrastructure.Persistence.Context;
 using Ledger.Test.Integration.Setup;
 using Ledger.Test.Integration.Setup.Helpers;
@@ -47,7 +48,7 @@ public class CreateLedgerCommandHandlerTest : IntegrationTestBase
 
         stored.Version.Should().Be(LedgerFactory.GenesisVersion);
         stored.Archived.Should().BeFalse();
-        stored.Hash.Should().Equal(LedgerSigner.Hash(ledgerId, LedgerFactory.GenesisVersion, LedgerFactory.GenesisHash, command.Payload, command.InviteKeysAdded));
+        stored.Hash.Should().Equal(LedgerSigner.Hash(ledgerId, LedgerFactory.GenesisVersion, LedgerFactory.GenesisHash, command.Payload, inviteKeysAdded: command.InviteKeysAdded));
         stored.WriteKeys.Select(k => k.PublicKey).Should().BeEquivalentTo(
             command.InviteKeysAdded.Prepend(LedgerSigner.PublicKeyOf(_creator)));
 
@@ -56,7 +57,11 @@ public class CreateLedgerCommandHandlerTest : IntegrationTestBase
         evt.Payload.Should().Equal(command.Payload);
         evt.PreviousHash.Should().Equal(LedgerFactory.GenesisHash);
         evt.WriteKeyPublic.Should().Equal(LedgerSigner.PublicKeyOf(_creator));
-        evt.KeysAdded.Should().BeEquivalentTo(command.InviteKeysAdded);
+        evt.KeysAdded.Should().BeEmpty();
+        evt.InviteKeysAdded.Should().BeEquivalentTo(command.InviteKeysAdded);
+        stored.WriteKeys.Single(k => k.PublicKey.SequenceEqual(LedgerSigner.PublicKeyOf(_creator))).Role.Should().Be(WriteKeyRole.Owner);
+        stored.WriteKeys.Where(k => !k.PublicKey.SequenceEqual(LedgerSigner.PublicKeyOf(_creator)))
+            .Should().OnlyContain(k => k.Role == WriteKeyRole.Invite);
     }
 
     [Fact]

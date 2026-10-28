@@ -1,3 +1,5 @@
+namespace Ledger.Domain.Enums;
+
 public enum WriteKeyRole
 {
     Invite = 0,

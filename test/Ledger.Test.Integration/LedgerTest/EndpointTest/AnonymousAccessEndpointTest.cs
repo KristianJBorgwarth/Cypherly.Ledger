@@ -51,7 +51,7 @@ public class AnonymousAccessEndpointTest(IntegrationTestFactory<Program, LedgerD
         // Arrange
         var ledger = await LedgerFactory.SeedAsync(Db, _creator);
         var cmd = LedgerCommands.Append(ledger).SignedBy(_creator);
-        var body = new { cmd.ExpectedVersion, cmd.PreviousHash, cmd.Payload, cmd.WriteKeyPublic, cmd.Signature, cmd.KeysAdded, cmd.KeysRemoved };
+        var body = new { cmd.ExpectedVersion, cmd.PreviousHash, cmd.Payload, cmd.WriteKeyPublic, cmd.Signature, cmd.KeysAdded, cmd.InviteKeysAdded, cmd.KeysRemoved };
 
         // Act
         var response = await Client.SendAsync(Request(HttpMethod.Put, $"/api/ledger/streams/{ledger.Id}/events", body, authenticated: false));
@@ -66,7 +66,7 @@ public class AnonymousAccessEndpointTest(IntegrationTestFactory<Program, LedgerD
         // Arrange
         var ledger = await LedgerFactory.SeedAsync(Db, _creator);
         var cmd = LedgerCommands.Append(ledger).SignedBy(LedgerSigner.NewKey());
-        var body = new { cmd.ExpectedVersion, cmd.PreviousHash, cmd.Payload, cmd.WriteKeyPublic, cmd.Signature, cmd.KeysAdded, cmd.KeysRemoved };
+        var body = new { cmd.ExpectedVersion, cmd.PreviousHash, cmd.Payload, cmd.WriteKeyPublic, cmd.Signature, cmd.KeysAdded, cmd.InviteKeysAdded, cmd.KeysRemoved };
 
         // Act
         var response = await Client.SendAsync(Request(HttpMethod.Put, $"/api/ledger/streams/{ledger.Id}/events", body, authenticated: false));

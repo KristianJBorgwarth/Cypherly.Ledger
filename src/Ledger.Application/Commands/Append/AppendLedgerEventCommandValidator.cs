@@ -15,6 +15,8 @@ public sealed class AppendLedgerEventCommandValidator : AbstractValidator<Append
         RuleFor(x => x.Signature).Must(s => s.Length == 64);
         RuleFor(x => x.KeysAdded).NotNull().Must(k => k.Count <= LedgerQueryLimits.MaxKeysPerEvent);
         RuleForEach(x => x.KeysAdded).Must(k => k.Length == 32);
+        RuleFor(x => x.InviteKeysAdded).NotNull().Must(k => k.Count <= LedgerQueryLimits.MaxKeysPerEvent);
+        RuleForEach(x => x.InviteKeysAdded).Must(k => k.Length == 32);
         RuleFor(x => x.KeysRemoved).NotNull().Must(k => k.Count <= LedgerQueryLimits.MaxKeysPerEvent);
         RuleForEach(x => x.KeysRemoved).Must(k => k.Length == 32);
     }

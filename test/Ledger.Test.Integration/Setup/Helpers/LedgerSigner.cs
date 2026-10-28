@@ -24,8 +24,9 @@ public static class LedgerSigner
         byte[] previousHash,
         byte[] payload,
         IReadOnlyCollection<byte[]>? keysAdded = null,
-        IReadOnlyCollection<byte[]>? keysRemoved = null) =>
-        Algorithm.Sign(key, SigningInput(ledgerId, version, previousHash, payload, keysAdded ?? [], keysRemoved ?? []));
+        IReadOnlyCollection<byte[]>? keysRemoved = null,
+        IReadOnlyCollection<byte[]>? inviteKeysAdded = null) =>
+        Algorithm.Sign(key, SigningInput(ledgerId, version, previousHash, payload, keysAdded ?? [], inviteKeysAdded ?? [], keysRemoved ?? []));
 
     public static byte[] Hash(
         Guid ledgerId,
@@ -33,8 +34,9 @@ public static class LedgerSigner
         byte[] previousHash,
         byte[] payload,
         IReadOnlyCollection<byte[]>? keysAdded = null,
-        IReadOnlyCollection<byte[]>? keysRemoved = null) =>
-        SHA256.HashData(SigningInput(ledgerId, version, previousHash, payload, keysAdded ?? [], keysRemoved ?? []));
+        IReadOnlyCollection<byte[]>? keysRemoved = null,
+        IReadOnlyCollection<byte[]>? inviteKeysAdded = null) =>
+        SHA256.HashData(SigningInput(ledgerId, version, previousHash, payload, keysAdded ?? [], inviteKeysAdded ?? [], keysRemoved ?? []));
 
     public static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
@@ -57,6 +59,7 @@ public static class LedgerSigner
         byte[] previousHash,
         byte[] payload,
         IReadOnlyCollection<byte[]> keysAdded,
+        IReadOnlyCollection<byte[]> inviteKeysAdded,
         IReadOnlyCollection<byte[]> keysRemoved)
     {
         using var input = new MemoryStream();
@@ -65,6 +68,7 @@ public static class LedgerSigner
         input.Write(BigEndian(version));
         input.Write(previousHash);
         WriteKeys(input, keysAdded);
+        WriteKeys(input, inviteKeysAdded);
         WriteKeys(input, keysRemoved);
         input.Write(payload);
 

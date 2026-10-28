@@ -25,9 +25,8 @@ public sealed class LedgerEvent : Entity
         byte[] writeKeyPublic, 
         byte[] signature,
         IEnumerable<byte[]> keysAdded,
-        IEnumerable<byte[]> keysRemoved,
-        IEnumerable<byte[]> inviteKeysAdded) 
-        : base(Guid.NewGuid())
+        IEnumerable<byte[]> inviteKeysAdded,
+        IEnumerable<byte[]> keysRemoved) : base(Guid.NewGuid())
     {
         StreamId = streamId;
         Version = version;
@@ -36,7 +35,7 @@ public sealed class LedgerEvent : Entity
         WriteKeyPublic = writeKeyPublic;
         Signature = signature;
         KeysAdded = [.. keysAdded];
-        KeysRemoved = [.. keysRemoved];
         InviteKeysAdded = [.. inviteKeysAdded];
+        KeysRemoved = [.. keysRemoved];
     }
 }

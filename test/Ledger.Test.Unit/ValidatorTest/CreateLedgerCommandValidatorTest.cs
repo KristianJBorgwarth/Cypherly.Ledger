@@ -20,9 +20,9 @@ public class CreateLedgerCommandValidatorTest
     };
 
     [Theory]
-    [InlineData(3)]
+    [InlineData(2)]
     [InlineData(5)]
-    public void Validate_Given_At_Least_Three_Keys_Added_Should_Be_Valid(int keysAdded)
+    public void Validate_Given_At_Least_Two_Invite_Keys_Should_Be_Valid(int keysAdded)
     {
         // Act
         var result = _sut.Validate(Command(keysAdded));
@@ -33,8 +33,8 @@ public class CreateLedgerCommandValidatorTest
 
     [Theory]
     [InlineData(0)]
-    [InlineData(2)]
-    public void Validate_Given_Fewer_Than_Three_Keys_Added_Should_Be_Invalid(int keysAdded)
+    [InlineData(1)]
+    public void Validate_Given_Fewer_Than_Two_Invite_Keys_Should_Be_Invalid(int keysAdded)
     {
         // Act
         var result = _sut.Validate(Command(keysAdded));

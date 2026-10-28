@@ -2,6 +2,7 @@
 using Ledger.Domain.Abstractions;
 using Ledger.Domain.Common;
 using Ledger.Domain.Entities;
+using Ledger.Domain.Enums;
 
 namespace Ledger.Domain.Aggregates;
 
@@ -46,24 +47,30 @@ public sealed class LedgerStream : AggregateRoot
             || eventHash.Length != HashLength
             || writeKeyPublic.Length != KeyLength
             || signature.Length != SignatureLength
-            || keysAdded.Concat(keysRemoved).Any(k => k.Length != KeyLength))
+            || keysAdded.Concat(inviteKeysAdded).Concat(keysRemoved).Any(k => k.Length != KeyLength))
             throw new ArgumentException("Malformed append.");
 
         if (Archived)
             return Result.Fail<LedgerEvent>(Error.NotFound<LedgerStream>(Id.ToString()));
 
-        if (!HasWriteKey(writeKeyPublic))
+        var signer = _writeKeys.FirstOrDefault(k => k.PublicKey.AsSpan().SequenceEqual(writeKeyPublic));
+
+        if (signer is null)
             return Result.Fail<LedgerEvent>(Error.Forbidden("Write key is not authorized for this ledger."));
+
+        if (signer.Role is WriteKeyRole.Invite && !IsSelfSwap(writeKeyPublic, keysAdded, inviteKeysAdded, keysRemoved))
+            return Result.Fail<LedgerEvent>(Error.Forbidden("An invite key may only register its own write key."));
 
         if (expectedVersion != Version || !previousHash.AsSpan().SequenceEqual(Hash))
             return Result.Fail<LedgerEvent>(Error.Conflict($"Ledger is at version {Version}, append expected {expectedVersion}."));
 
-        var remaining = _writeKeys.Count(k => !keysRemoved.Any(r => r.AsSpan().SequenceEqual(k.PublicKey))) + keysAdded.Count(k => !HasWriteKey(k));
+        var remaining = _writeKeys.Count(k => k.Role is not WriteKeyRole.Invite && !keysRemoved.Any(r => r.AsSpan().SequenceEqual(k.PublicKey)))
+                        + keysAdded.Count(k => !HasWriteKey(k));
 
         if (remaining == 0)
             return Result.Fail<LedgerEvent>(Error.Validation("Append would leave the ledger without write keys."));
 
-        var evt = new LedgerEvent(Id, Version + 1, payload, previousHash, writeKeyPublic, signature, keysAdded, keysRemoved, inviteKeysAdded);
+        var evt = new LedgerEvent(Id, Version + 1, payload, previousHash, writeKeyPublic, signature, keysAdded, inviteKeysAdded, keysRemoved);
 
         _events.Add(evt);
 
@@ -72,6 +79,9 @@ public sealed class LedgerStream : AggregateRoot
 
         foreach (var key in keysAdded.Where(k => !HasWriteKey(k)))
             _writeKeys.Add(new LedgerWriteKey(Id, key, WriteKeyRole.Writer));
+
+        foreach (var key in inviteKeysAdded.Where(k => !HasWriteKey(k)))
+            _writeKeys.Add(new LedgerWriteKey(Id, key, WriteKeyRole.Invite));
 
         Version = evt.Version;
         Hash = eventHash;
@@ -85,7 +95,7 @@ public sealed class LedgerStream : AggregateRoot
         byte[] payload,
         byte[] eventhash,
         byte[] signature,
-        IReadOnlyCollection<byte[]> invitesAdded)
+        IReadOnlyCollection<byte[]> inviteKeysAdded)
     {
         var ledger = new LedgerStream(id, creatorWriteKey);
 
@@ -97,8 +107,8 @@ public sealed class LedgerStream : AggregateRoot
             writeKeyPublic: creatorWriteKey,
             signature: signature,
             keysAdded: [],
-            keysRemoved: [],
-            inviteKeysAdded: invitesAdded);
+            inviteKeysAdded: inviteKeysAdded,
+            keysRemoved: []);
 
         return append.Success ? ledger : Result.Fail<LedgerStream>(append.Error);
     }
@@ -119,8 +129,8 @@ public sealed class LedgerStream : AggregateRoot
             writeKeyPublic: writeKeyPublic,
             signature: signature,
             keysAdded: [],
-            keysRemoved: [],
-            inviteKeysAdded: []);
+            inviteKeysAdded: [],
+            keysRemoved: []);
 
         if (append.Success is false)
             return append;
@@ -130,13 +140,14 @@ public sealed class LedgerStream : AggregateRoot
         return append;
     }
 
-    private static bool IsSelfSwap(
+    private bool IsSelfSwap(
         byte[] signer,
         IReadOnlyCollection<byte[]> keysAdded,
-        IReadOnlyCollection<byte[]> invitesAdded,
+        IReadOnlyCollection<byte[]> inviteKeysAdded,
         IReadOnlyCollection<byte[]> keysRemoved) =>
-        invitesAdded.Count == 0
+        inviteKeysAdded.Count == 0
         && keysAdded.Count == 1
+        && !HasWriteKey(keysAdded.First())
         && keysRemoved.Count == 1
         && keysRemoved.First().AsSpan().SequenceEqual(signer);
 }

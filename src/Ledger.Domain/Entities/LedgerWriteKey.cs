@@ -1,4 +1,5 @@
 using Ledger.Domain.Abstractions;
+using Ledger.Domain.Enums;
 
 namespace Ledger.Domain.Entities;
 

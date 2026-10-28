@@ -48,6 +48,11 @@ public sealed class LedgerEventModelConfiguration : BaseModelConfiguration<Ledge
             .HasColumnName("keys_added")
             .IsRequired();
 
+        builder.Property(x => x.InviteKeysAdded)
+            .HasColumnName("invite_keys_added")
+            .HasDefaultValueSql("'{}'::bytea[]")
+            .IsRequired();
+
         builder.Property(x => x.KeysRemoved)
             .HasColumnName("keys_removed")
             .IsRequired();

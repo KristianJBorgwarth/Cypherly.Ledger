@@ -2,6 +2,7 @@ using FluentAssertions;
 using Ledger.Domain.Aggregates;
 using Ledger.Domain.Common;
 using Ledger.Domain.Entities;
+using Ledger.Domain.Enums;
 
 namespace Ledger.Test.Unit.AggregateTest;
 
@@ -20,7 +21,8 @@ public class LedgerStreamTest
         byte[][]? added = null,
         byte[][]? removed = null,
         int? expectedVersion = null,
-        byte[]? previousHash = null)
+        byte[]? previousHash = null,
+        byte[][]? invites = null)
     {
         return ledger.Append(
             expectedVersion ?? ledger.Version,
@@ -30,6 +32,7 @@ public class LedgerStreamTest
             writeKey,
             Bytes(0x00, 64),
             added ?? [],
+            invites ?? [],
             removed ?? []);
     }
 
@@ -270,6 +273,7 @@ public class LedgerStreamTest
         "shortWriteKey",
         "shortSignature",
         "shortAddedKey",
+        "shortInviteKey",
         "shortRemovedKey",
     ];
 
@@ -287,6 +291,7 @@ public class LedgerStreamTest
             writeKeyPublic: input == "shortWriteKey" ? CreatorKey[..31] : CreatorKey,
             signature: input == "shortSignature" ? Bytes(0x00, 63) : Bytes(0x00, 64),
             keysAdded: input == "shortAddedKey" ? [OtherKey, Bytes(0xD4, 31)] : [],
+            inviteKeysAdded: input == "shortInviteKey" ? [Bytes(0xD4, 31)] : [],
             keysRemoved: input == "shortRemovedKey" ? [Bytes(0xD4, 31)] : []);
 
         act.Should().Throw<ArgumentException>();
@@ -334,5 +339,127 @@ public class LedgerStreamTest
         result.Error!.Type.Should().Be(ErrorType.NotFound);
         ledger.Archived.Should().BeTrue();
         ledger.Events.Should().ContainSingle();
+    }
+
+    private static readonly byte[] InviteKey = Bytes(0xE5, 32);
+    private static readonly byte[] SwappedKey = Bytes(0xF6, 32);
+
+    private static LedgerStream LedgerWithInvite()
+    {
+        var ledger = new LedgerStream(Guid.NewGuid(), CreatorKey);
+        Append(ledger, CreatorKey, Bytes(0x01, 32), invites: [InviteKey]);
+        return ledger;
+    }
+
+    private static WriteKeyRole RoleOf(LedgerStream ledger, byte[] key) =>
+        ledger.WriteKeys.Single(k => k.PublicKey.SequenceEqual(key)).Role;
+
+    [Fact]
+    public void Append_ShouldStoreInviteKeys_WithInviteRole()
+    {
+        var ledger = LedgerWithInvite();
+
+        ledger.HasWriteKey(InviteKey).Should().BeTrue();
+        RoleOf(ledger, InviteKey).Should().Be(WriteKeyRole.Invite);
+        RoleOf(ledger, CreatorKey).Should().Be(WriteKeyRole.Owner);
+        ledger.Events.Single().InviteKeysAdded.Should().ContainSingle().Which.Should().Equal(InviteKey);
+    }
+
+    [Fact]
+    public void Append_ShouldAddKeysAsWriters()
+    {
+        var ledger = new LedgerStream(Guid.NewGuid(), CreatorKey);
+
+        Append(ledger, CreatorKey, Bytes(0x01, 32), added: [OtherKey]);
+
+        RoleOf(ledger, OtherKey).Should().Be(WriteKeyRole.Writer);
+    }
+
+    [Fact]
+    public void Initialize_ShouldStoreInviteKeys()
+    {
+        var ledger = LedgerStream.Initialize(Guid.NewGuid(), CreatorKey, [1, 2, 3], Bytes(0x01, 32), Bytes(0x00, 64), [InviteKey, OtherKey]).RequiredValue;
+
+        RoleOf(ledger, InviteKey).Should().Be(WriteKeyRole.Invite);
+        RoleOf(ledger, OtherKey).Should().Be(WriteKeyRole.Invite);
+    }
+
+    [Fact]
+    public void Append_ShouldAllowInviteSelfSwap()
+    {
+        var ledger = LedgerWithInvite();
+
+        var result = Append(ledger, InviteKey, Bytes(0x02, 32), added: [SwappedKey], removed: [InviteKey]);
+
+        result.Success.Should().BeTrue();
+        ledger.HasWriteKey(InviteKey).Should().BeFalse();
+        RoleOf(ledger, SwappedKey).Should().Be(WriteKeyRole.Writer);
+    }
+
+    [Fact]
+    public void Append_ShouldRefuseInviteKey_AfterItSwapped()
+    {
+        var ledger = LedgerWithInvite();
+        Append(ledger, InviteKey, Bytes(0x02, 32), added: [SwappedKey], removed: [InviteKey]);
+
+        var result = Append(ledger, InviteKey, Bytes(0x03, 32), added: [OtherKey], removed: [InviteKey]);
+
+        result.Success.Should().BeFalse();
+        result.Error!.Type.Should().Be(ErrorType.Forbidden);
+    }
+
+    public static TheoryData<string> InviteViolations =>
+    [
+        "plainAppend",
+        "removeOtherKey",
+        "addTwoKeys",
+        "addInvite",
+        "addExistingKey",
+        "removeSelfOnly",
+    ];
+
+    [Theory]
+    [MemberData(nameof(InviteViolations))]
+    public void Append_ShouldRefuseInviteKey_WhenNotASelfSwap(string violation)
+    {
+        var ledger = LedgerWithInvite();
+
+        var result = violation switch
+        {
+            "plainAppend" => Append(ledger, InviteKey, Bytes(0x02, 32)),
+            "removeOtherKey" => Append(ledger, InviteKey, Bytes(0x02, 32), added: [SwappedKey], removed: [CreatorKey]),
+            "addTwoKeys" => Append(ledger, InviteKey, Bytes(0x02, 32), added: [SwappedKey, OtherKey], removed: [InviteKey]),
+            "addInvite" => Append(ledger, InviteKey, Bytes(0x02, 32), added: [SwappedKey], removed: [InviteKey], invites: [OtherKey]),
+            "addExistingKey" => Append(ledger, InviteKey, Bytes(0x02, 32), added: [CreatorKey], removed: [InviteKey]),
+            "removeSelfOnly" => Append(ledger, InviteKey, Bytes(0x02, 32), removed: [InviteKey]),
+            _ => throw new ArgumentOutOfRangeException(nameof(violation)),
+        };
+
+        result.Success.Should().BeFalse();
+        result.Error!.Type.Should().Be(ErrorType.Forbidden);
+        ShouldBeUnchanged(ledger, 1, Bytes(0x01, 32), 1, CreatorKey, InviteKey);
+    }
+
+    [Fact]
+    public void Archive_ShouldRefuseInviteKey()
+    {
+        var ledger = LedgerWithInvite();
+
+        var result = Archive(ledger, InviteKey, Bytes(0x0A, 32));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Type.Should().Be(ErrorType.Forbidden);
+        ledger.Archived.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Append_ShouldFailWithValidation_WhenOnlyInviteKeysWouldRemain()
+    {
+        var ledger = LedgerWithInvite();
+
+        var result = Append(ledger, CreatorKey, Bytes(0x02, 32), removed: [CreatorKey]);
+
+        result.Success.Should().BeFalse();
+        result.Error!.Type.Should().Be(ErrorType.Validation);
     }
 }
