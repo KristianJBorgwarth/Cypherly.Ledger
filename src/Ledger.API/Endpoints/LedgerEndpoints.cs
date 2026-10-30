@@ -7,6 +7,7 @@ using Ledger.Application.Commands.Create;
 using Ledger.Application.Common;
 using Ledger.Application.Queries.GetEvents;
 using Ledger.Application.Queries.GetHead;
+using Ledger.Domain.Common;
 using Mediator;
 using Microsoft.AspNetCore.Mvc;
 using Ledger.Application.Dto;
@@ -31,7 +32,7 @@ internal sealed class LedgerEndpoints : IEndpoint
                 Payload = req.Payload,
                 WriteKey = req.WriteKey,
                 Signature = req.Signature,
-                KeysAdded = req.KeysAdded
+                KeyChanges = new KeyChanges(req.KeyChanges.Added, req.KeyChanges.InvitesAdded, req.KeyChanges.Removed)
             }, ct);
 
             return result.Success ? Results.Created($"/api/ledger/streams/{req.LedgerId}", null) : result.ToProblemDetails();
@@ -50,8 +51,7 @@ internal sealed class LedgerEndpoints : IEndpoint
                 Payload = req.Payload,
                 WriteKeyPublic = req.WriteKeyPublic,
                 Signature = req.Signature,
-                KeysAdded = req.KeysAdded,
-                KeysRemoved = req.KeysRemoved
+                KeyChanges = new KeyChanges(req.KeyChanges.Added, req.KeyChanges.InvitesAdded, req.KeyChanges.Removed)
             }, ct);
 
             return result.Success ? Results.Ok() : result.ToProblemDetails();

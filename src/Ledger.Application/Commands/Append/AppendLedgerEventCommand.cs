@@ -1,4 +1,5 @@
 using Ledger.Application.Abstractions;
+using Ledger.Domain.Common;
 
 namespace Ledger.Application.Commands.Append;
 
@@ -10,6 +11,5 @@ public sealed record AppendLedgerEventCommand : ICommand
     public required byte[] Payload { get; init; }
     public required byte[] WriteKeyPublic { get; init; }
     public required byte[] Signature { get; init; }
-    public required List<byte[]> KeysAdded { get; init; }
-    public required List<byte[]> KeysRemoved { get; init; }
+    public required KeyChanges KeyChanges { get; init; }
 }

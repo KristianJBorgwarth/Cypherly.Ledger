@@ -28,8 +28,7 @@ public sealed class AppendLedgerEventCommandHandler(
                 payload: cmd.Payload,
                 writeKeyPublic: cmd.WriteKeyPublic,
                 signature: cmd.Signature,
-                keysAdded: cmd.KeysAdded,
-                keysRemoved: cmd.KeysRemoved) is false)
+                keyChanges: cmd.KeyChanges) is false)
             return Result.Fail(Error.Forbidden("Invalid signature."));
 
         var evtHash = signatureHelper.GenerateHash(
@@ -37,8 +36,7 @@ public sealed class AppendLedgerEventCommandHandler(
             version: eventVersion,
             previousHash: cmd.PreviousHash,
             payload: cmd.Payload,
-            keysAdded: cmd.KeysAdded,
-            keysRemoved: cmd.KeysRemoved);
+            keyChanges: cmd.KeyChanges);
 
         var result = ledger.Append(
             expectedVersion: cmd.ExpectedVersion,
@@ -47,8 +45,7 @@ public sealed class AppendLedgerEventCommandHandler(
             payload: cmd.Payload,
             writeKeyPublic: cmd.WriteKeyPublic,
             signature: cmd.Signature,
-            keysAdded: cmd.KeysAdded,
-            keysRemoved: cmd.KeysRemoved);
+            keyChanges: cmd.KeyChanges);
 
         if(result.Success is false)
             return result;

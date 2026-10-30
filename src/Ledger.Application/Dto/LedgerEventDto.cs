@@ -9,8 +9,7 @@ public sealed record LedgerEventDto
     public required byte[] Payload { get; init; }
     public required byte[] WriteKeyPublic { get; init; }
     public required byte[] Signature { get; init; }
-    public required List<byte[]> KeysAdded { get; init; }
-    public required List<byte[]> KeysRemoved { get; init; }
+    public required KeyChangesDto KeyChanges { get; init; }
 
     public static LedgerEventDto MapFrom(LedgerEvent evt) => new()
     {
@@ -19,7 +18,11 @@ public sealed record LedgerEventDto
         Payload = evt.Payload,
         WriteKeyPublic = evt.WriteKeyPublic,
         Signature = evt.Signature,
-        KeysAdded = evt.KeysAdded,
-        KeysRemoved = evt.KeysRemoved,
+        KeyChanges = new KeyChangesDto
+        {
+            Added = evt.KeysAdded,
+            InvitesAdded = evt.InviteKeysAdded,
+            Removed = evt.KeysRemoved,
+        },
     };
 }

@@ -3,6 +3,7 @@ using Ledger.Application.Abstractions;
 using Ledger.Application.Commands.Create;
 using Ledger.Application.Interfaces;
 using Ledger.Domain.Common;
+using Ledger.Domain.Enums;
 using Ledger.Infrastructure.Persistence.Context;
 using Ledger.Test.Integration.Setup;
 using Ledger.Test.Integration.Setup.Helpers;
@@ -47,16 +48,20 @@ public class CreateLedgerCommandHandlerTest : IntegrationTestBase
 
         stored.Version.Should().Be(LedgerFactory.GenesisVersion);
         stored.Archived.Should().BeFalse();
-        stored.Hash.Should().Equal(LedgerSigner.Hash(ledgerId, LedgerFactory.GenesisVersion, LedgerFactory.GenesisHash, command.Payload, command.KeysAdded));
+        stored.Hash.Should().Equal(LedgerSigner.Hash(ledgerId, LedgerFactory.GenesisVersion, LedgerFactory.GenesisHash, command.Payload, inviteKeysAdded: command.KeyChanges.InvitesAdded));
         stored.WriteKeys.Select(k => k.PublicKey).Should().BeEquivalentTo(
-            command.KeysAdded.Prepend(LedgerSigner.PublicKeyOf(_creator)));
+            command.KeyChanges.InvitesAdded.Prepend(LedgerSigner.PublicKeyOf(_creator)));
 
         var evt = stored.Events.Should().ContainSingle().Subject;
         evt.Version.Should().Be(LedgerFactory.GenesisVersion);
         evt.Payload.Should().Equal(command.Payload);
         evt.PreviousHash.Should().Equal(LedgerFactory.GenesisHash);
         evt.WriteKeyPublic.Should().Equal(LedgerSigner.PublicKeyOf(_creator));
-        evt.KeysAdded.Should().BeEquivalentTo(command.KeysAdded);
+        evt.KeysAdded.Should().BeEmpty();
+        evt.InviteKeysAdded.Should().BeEquivalentTo(command.KeyChanges.InvitesAdded);
+        stored.WriteKeys.Single(k => k.PublicKey.SequenceEqual(LedgerSigner.PublicKeyOf(_creator))).Role.Should().Be(WriteKeyRole.Owner);
+        stored.WriteKeys.Where(k => !k.PublicKey.SequenceEqual(LedgerSigner.PublicKeyOf(_creator)))
+            .Should().OnlyContain(k => k.Role == WriteKeyRole.Invite);
     }
 
     [Fact]
@@ -98,7 +103,7 @@ public class CreateLedgerCommandHandlerTest : IntegrationTestBase
         // Arrange
         var command = LedgerCommands.Create(Guid.NewGuid()).SignedBy(_creator) with
         {
-            KeysAdded = [LedgerSigner.PublicKeyOf(LedgerSigner.NewKey())],
+            KeyChanges = new KeyChanges([], [LedgerSigner.PublicKeyOf(LedgerSigner.NewKey())], []),
         };
 
         // Act

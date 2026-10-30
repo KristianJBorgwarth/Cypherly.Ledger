@@ -1,3 +1,5 @@
+using Ledger.Domain.Common;
+
 namespace Ledger.Application.Interfaces;
 
 public interface ISignatureHelper
@@ -10,8 +12,7 @@ public interface ISignatureHelper
         int version, 
         byte[] previousHash, 
         byte[] payload,
-        IReadOnlyCollection<byte[]> keysAdded,
-        IReadOnlyCollection<byte[]> keysRemoved);
+        KeyChanges keyChanges);
 
     /// <summary>
     /// Validates the signature for the given ledger event data.
@@ -23,8 +24,7 @@ public interface ISignatureHelper
         byte[] payload, 
         byte[] writeKeyPublic, 
         byte[] signature,
-        IReadOnlyCollection<byte[]> keysAdded,
-        IReadOnlyCollection<byte[]> keysRemoved);
+        KeyChanges keyChanges);
 
     public bool IsValidReadSignature(Guid ledgerId, long timestamp, byte[] writeKeyPublic, byte[] signature);
 }

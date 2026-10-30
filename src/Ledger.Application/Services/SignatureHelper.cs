@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Security.Cryptography;
 using Ledger.Application.Common;
 using Ledger.Application.Interfaces;
+using Ledger.Domain.Common;
 using NSec.Cryptography;
 
 namespace Ledger.Application.Services;
@@ -13,10 +14,9 @@ internal sealed class SignatureHelper : ISignatureHelper
         int version,
         byte[] previousHash,
         byte[] payload,
-        IReadOnlyCollection<byte[]> keysAdded,
-        IReadOnlyCollection<byte[]> keysRemoved)
+        KeyChanges keyChanges)
     {
-        var signingInput = SigningInput(ledgerId, version, previousHash, payload, keysAdded, keysRemoved);
+        var signingInput = SigningInput(ledgerId, version, previousHash, payload, keyChanges);
         return SHA256.HashData(signingInput);
     }
 
@@ -27,15 +27,14 @@ internal sealed class SignatureHelper : ISignatureHelper
         byte[] payload,
         byte[] writeKeyPublic,
         byte[] signature,
-        IReadOnlyCollection<byte[]> keysAdded,
-        IReadOnlyCollection<byte[]> keysRemoved)
+        KeyChanges keyChanges)
     {
         var algorithm = SignatureAlgorithm.Ed25519;
 
         if (!PublicKey.TryImport(algorithm, writeKeyPublic, KeyBlobFormat.RawPublicKey, out var key))
             return false;
 
-        var signingInput = SigningInput(ledgerId, version, previousHash, payload, keysAdded, keysRemoved);
+        var signingInput = SigningInput(ledgerId, version, previousHash, payload, keyChanges);
 
         return algorithm.Verify(key!, signingInput, signature);
     }
@@ -48,16 +47,16 @@ internal sealed class SignatureHelper : ISignatureHelper
         int version,
         byte[] previousHash,
         byte[] payload,
-        IReadOnlyCollection<byte[]> keysAdded,
-        IReadOnlyCollection<byte[]> keysRemoved)
+        KeyChanges keyChanges)
     {
         using var input = new MemoryStream();
         input.Write("ledger-v1"u8);
         input.Write(ledgerId.ToByteArray(bigEndian: true));
         input.Write(BigEndian(version));
         input.Write(previousHash);
-        WriteKeys(input, keysAdded);
-        WriteKeys(input, keysRemoved);
+        WriteKeys(input, keyChanges.Added);
+        WriteKeys(input, keyChanges.InvitesAdded);
+        WriteKeys(input, keyChanges.Removed);
         input.Write(payload);
 
         return input.ToArray();

@@ -10,18 +10,19 @@ public static class LedgerFactory
     public static readonly byte[] GenesisHash = new byte[32];
     public const int GenesisVersion = 1;
 
-    public static async Task<LedgerStream> SeedAsync(LedgerDbContext db, Key creator, byte[]? payload = null)
+    public static async Task<LedgerStream> SeedAsync(LedgerDbContext db, Key creator, byte[]? payload = null, IReadOnlyCollection<byte[]>? inviteKeys = null)
     {
         payload ??= [1, 2, 3];
+        inviteKeys ??= [];
         var id = Guid.NewGuid();
 
         var ledger = LedgerStream.Initialize(
             id: id,
             creatorWriteKey: LedgerSigner.PublicKeyOf(creator),
             payload: payload,
-            eventhash: LedgerSigner.Hash(id, GenesisVersion, GenesisHash, payload),
-            signature: LedgerSigner.Sign(creator, id, GenesisVersion, GenesisHash, payload),
-            keysAdded: []).RequiredValue;
+            eventhash: LedgerSigner.Hash(id, GenesisVersion, GenesisHash, payload, inviteKeysAdded: inviteKeys),
+            signature: LedgerSigner.Sign(creator, id, GenesisVersion, GenesisHash, payload, inviteKeysAdded: inviteKeys),
+            inviteKeysAdded: inviteKeys).RequiredValue;
 
         await db.LedgerStream.AddAsync(ledger);
         await db.SaveChangesAsync();
