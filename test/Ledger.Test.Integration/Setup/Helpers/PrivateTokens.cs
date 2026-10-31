@@ -9,7 +9,7 @@ namespace Ledger.Test.Integration.Setup.Helpers;
 public static class PrivateTokens
 {
     private const ushort TokenType = 0x0002;
-    private const string IssuerName = "identity.cypherly";
+    private const string IssuerName = "identity.cendrite";
 
     private static readonly RSA Issuer = RSA.Create(2048);
 
