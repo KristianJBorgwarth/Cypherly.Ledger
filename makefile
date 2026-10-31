@@ -1,5 +1,5 @@
 
-SLN := Cypherly.Ledger.sln
+SLN := Cendrite.Ledger.sln
 
 .PHONY: restore build test clean
 
